@@ -1,175 +1,181 @@
 {
-  "note": "Strongest Stage-1 baseline per classifier head - the reference Stages 2-3 must beat on the same episode files. ResNet-50 x Mini-ImageNet excluded (label contamination).",
-  "selection_metric": "episodic accuracy, 600 fixed episodes",
+  "note": "Final embedding per (dataset, head), selected on VALIDATION data only (one config across all K; zero-shot selected by prompt variant). test_reference = one-time test read-out; the Stage-2 reference to beat. ResNet-50 excluded on Mini-ImageNet (label contamination).",
+  "selection_protocol": {
+    "episodes_seed": 123,
+    "n_episodes_per_k": 600,
+    "pools": {
+      "mnist": "train",
+      "cifar10": "train",
+      "mini_imagenet": "val"
+    },
+    "rule": "mean val acc across K; paired CI vs runner-up; tie -> smaller embedding"
+  },
   "selection": {
     "mnist": {
       "prototype": {
-        "1shot": {
-          "classifier": "proto_eucl__dinov2_vits14",
-          "backbone": "dinov2_vits14",
-          "acc": 0.5676,
-          "ci95": 0.0092,
-          "within_ci_alternatives": [
-            "proto_cos__clip_vitb32",
-            "proto_cos__dinov2_vits14",
-            "proto_cos__resnet50",
-            "proto_eucl__clip_vitb32"
-          ]
-        },
-        "5shot": {
-          "classifier": "proto_cos__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.7801,
-          "ci95": 0.006,
-          "within_ci_alternatives": [
-            "proto_eucl__clip_vitb32"
-          ]
+        "classifier": "proto_eucl__clip_vitb32",
+        "backbone": "clip_vitb32",
+        "selected_on": "validation (train split)",
+        "val_acc_mean": 0.659,
+        "paired_margin_vs_runner_up": "+0.04 \u00b1 0.07",
+        "tie_break_smaller_embedding": true,
+        "test_reference": {
+          "1shot": {
+            "acc": 0.5664,
+            "ci95": 0.0087
+          },
+          "5shot": {
+            "acc": 0.7793,
+            "ci95": 0.006
+          }
         }
       },
       "linear": {
-        "1shot": {
-          "classifier": "linear__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.5996,
-          "ci95": 0.0086,
-          "within_ci_alternatives": []
-        },
-        "5shot": {
-          "classifier": "linear__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.866,
-          "ci95": 0.0044,
-          "within_ci_alternatives": []
+        "classifier": "linear__clip_vitb32",
+        "backbone": "clip_vitb32",
+        "selected_on": "validation (train split)",
+        "val_acc_mean": 0.7231,
+        "paired_margin_vs_runner_up": "+2.51 \u00b1 0.50",
+        "tie_break_smaller_embedding": false,
+        "test_reference": {
+          "1shot": {
+            "acc": 0.5996,
+            "ci95": 0.0086
+          },
+          "5shot": {
+            "acc": 0.866,
+            "ci95": 0.0044
+          }
         }
       },
       "zeroshot_clip": {
-        "1shot": {
-          "classifier": "clip_zeroshot__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.5961,
-          "ci95": 0.0088,
-          "within_ci_alternatives": []
-        },
-        "5shot": {
-          "classifier": "clip_zeroshot__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.5953,
-          "ci95": 0.0089,
-          "within_ci_alternatives": []
+        "classifier": "clip_zeroshot__clip_vitb32",
+        "backbone": "clip_vitb32",
+        "selected_on": "validation (train split)",
+        "val_acc_mean": 0.5938,
+        "paired_margin_vs_runner_up": "+2.96 \u00b1 0.55",
+        "tie_break_smaller_embedding": false,
+        "test_reference": {
+          "1shot": {
+            "acc": 0.5961,
+            "ci95": 0.0088
+          },
+          "5shot": {
+            "acc": 0.5953,
+            "ci95": 0.0089
+          }
         }
       }
     },
     "cifar10": {
       "prototype": {
-        "1shot": {
-          "classifier": "proto_cos__dinov2_vits14",
-          "backbone": "dinov2_vits14",
-          "acc": 0.7734,
-          "ci95": 0.0072,
-          "within_ci_alternatives": []
-        },
-        "5shot": {
-          "classifier": "proto_cos__dinov2_vits14",
-          "backbone": "dinov2_vits14",
-          "acc": 0.9195,
-          "ci95": 0.0037,
-          "within_ci_alternatives": [
-            "proto_eucl__dinov2_vits14"
-          ]
+        "classifier": "proto_cos__dinov2_vits14",
+        "backbone": "dinov2_vits14",
+        "selected_on": "validation (train split)",
+        "val_acc_mean": 0.8516,
+        "paired_margin_vs_runner_up": "+1.16 \u00b1 0.18",
+        "tie_break_smaller_embedding": false,
+        "test_reference": {
+          "1shot": {
+            "acc": 0.7734,
+            "ci95": 0.0072
+          },
+          "5shot": {
+            "acc": 0.9195,
+            "ci95": 0.0037
+          }
         }
       },
       "linear": {
-        "1shot": {
-          "classifier": "linear__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.7686,
-          "ci95": 0.008,
-          "within_ci_alternatives": []
-        },
-        "5shot": {
-          "classifier": "linear__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.9082,
-          "ci95": 0.0037,
-          "within_ci_alternatives": [
-            "linear__dinov2_vits14"
-          ]
+        "classifier": "linear__clip_vitb32",
+        "backbone": "clip_vitb32",
+        "selected_on": "validation (train split)",
+        "val_acc_mean": 0.8415,
+        "paired_margin_vs_runner_up": "+1.67 \u00b1 0.44",
+        "tie_break_smaller_embedding": false,
+        "test_reference": {
+          "1shot": {
+            "acc": 0.7686,
+            "ci95": 0.008
+          },
+          "5shot": {
+            "acc": 0.9082,
+            "ci95": 0.0037
+          }
         }
       },
       "zeroshot_clip": {
-        "1shot": {
-          "classifier": "clip_zeroshot_ens__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.9344,
-          "ci95": 0.0027,
-          "within_ci_alternatives": []
-        },
-        "5shot": {
-          "classifier": "clip_zeroshot_ens__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.9322,
-          "ci95": 0.0027,
-          "within_ci_alternatives": [
-            "clip_zeroshot__clip_vitb32"
-          ]
+        "classifier": "clip_zeroshot_ens__clip_vitb32",
+        "backbone": "clip_vitb32",
+        "selected_on": "validation (train split)",
+        "val_acc_mean": 0.9307,
+        "paired_margin_vs_runner_up": "+0.24 \u00b1 0.07",
+        "tie_break_smaller_embedding": false,
+        "test_reference": {
+          "1shot": {
+            "acc": 0.9344,
+            "ci95": 0.0027
+          },
+          "5shot": {
+            "acc": 0.9322,
+            "ci95": 0.0027
+          }
         }
       }
     },
     "mini_imagenet": {
       "prototype": {
-        "1shot": {
-          "classifier": "proto_eucl__dinov2_vits14",
-          "backbone": "dinov2_vits14",
-          "acc": 0.9457,
-          "ci95": 0.0047,
-          "within_ci_alternatives": [
-            "proto_cos__dinov2_vits14"
-          ]
-        },
-        "5shot": {
-          "classifier": "proto_cos__dinov2_vits14",
-          "backbone": "dinov2_vits14",
-          "acc": 0.9856,
-          "ci95": 0.0015,
-          "within_ci_alternatives": []
+        "classifier": "proto_cos__dinov2_vits14",
+        "backbone": "dinov2_vits14",
+        "selected_on": "validation (16 R&L val classes)",
+        "val_acc_mean": 0.9562,
+        "paired_margin_vs_runner_up": "+0.43 \u00b1 0.11",
+        "tie_break_smaller_embedding": false,
+        "test_reference": {
+          "1shot": {
+            "acc": 0.9442,
+            "ci95": 0.0047
+          },
+          "5shot": {
+            "acc": 0.9856,
+            "ci95": 0.0015
+          }
         }
       },
       "linear": {
-        "1shot": {
-          "classifier": "linear__dinov2_vits14",
-          "backbone": "dinov2_vits14",
-          "acc": 0.9292,
-          "ci95": 0.0053,
-          "within_ci_alternatives": []
-        },
-        "5shot": {
-          "classifier": "linear__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.9826,
-          "ci95": 0.0016,
-          "within_ci_alternatives": [
-            "linear__dinov2_vits14"
-          ]
+        "classifier": "linear__clip_vitb32",
+        "backbone": "clip_vitb32",
+        "selected_on": "validation (16 R&L val classes)",
+        "val_acc_mean": 0.9519,
+        "paired_margin_vs_runner_up": "+0.67 \u00b1 0.26",
+        "tie_break_smaller_embedding": false,
+        "test_reference": {
+          "1shot": {
+            "acc": 0.914,
+            "ci95": 0.0057
+          },
+          "5shot": {
+            "acc": 0.9826,
+            "ci95": 0.0016
+          }
         }
       },
       "zeroshot_clip": {
-        "1shot": {
-          "classifier": "clip_zeroshot_ens__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.9908,
-          "ci95": 0.001,
-          "within_ci_alternatives": [
-            "clip_zeroshot__clip_vitb32"
-          ]
-        },
-        "5shot": {
-          "classifier": "clip_zeroshot_ens__clip_vitb32",
-          "backbone": "clip_vitb32",
-          "acc": 0.991,
-          "ci95": 0.001,
-          "within_ci_alternatives": [
-            "clip_zeroshot__clip_vitb32"
-          ]
+        "classifier": "clip_zeroshot_ens__clip_vitb32",
+        "backbone": "clip_vitb32",
+        "selected_on": "validation (16 R&L val classes)",
+        "val_acc_mean": 0.9905,
+        "paired_margin_vs_runner_up": "+0.06 \u00b1 0.03",
+        "tie_break_smaller_embedding": false,
+        "test_reference": {
+          "1shot": {
+            "acc": 0.9908,
+            "ci95": 0.001
+          },
+          "5shot": {
+            "acc": 0.991,
+            "ci95": 0.001
+          }
         }
       }
     }

@@ -1,0 +1,115 @@
+The updated notebook is much stronger. It now addresses almost all previous concerns and looks professional enough for a project presentation.
+
+I would rate the presentation quality 9.5 out of 10. However, the Final Embedding Selection is not fully valid yet because of one major methodological issue.
+
+## What Is Now Excellent
+
+1. Linear Probes are evaluated with CLIP, DINOv2, and ResNet.
+
+2. Zero Shot CLIP is correctly described as a semantic reference baseline.
+
+3. t SNE is treated as qualitative, and quantitative embedding metrics were added.
+
+4. Zero Shot results no longer display a misleading standard deviation.
+
+5. Support and Query separation is clearly documented.
+
+6. Stage 2 prototypes are explicitly calculated from Support images only.
+
+7. Paired statistical comparisons were added.
+
+8. The encoder remains frozen during Stage 2 and Stage 3.
+
+9. The Stage 2 and Stage 3 architecture diagram is clear.
+
+10. The notebook now produces a concrete selection artifact.
+
+## Main Problem: Selection Uses Test Results
+
+The notebook says:
+
+> Stage 1's purpose is selection, not ranking
+
+However, the selected configurations in `best_baselines.json` are chosen according to Episodic accuracy on the test classes.
+
+The notebook also states that the Mini ImageNet validation classes were not used during Stage 1. This confirms that the test results are currently being used for model selection.
+
+That creates test leakage.
+
+The correct process is:
+
+1. Select the embedding using validation data.
+
+2. Freeze the selected embedding and configuration.
+
+3. Evaluate the selected configuration once on the test data.
+
+For Mini ImageNet, selection should use the 16 validation classes.
+
+For MNIST and CIFAR, selection should use a validation subset created from the training split.
+
+## Second Problem: There Is No Single Final Embedding
+
+The current table selects a different embedding for different values of (K).
+
+For example:
+
+1. MNIST Prototype uses DINOv2 for 1 Shot but CLIP for 5 Shot.
+
+2. Mini ImageNet Linear Probe uses DINOv2 for 1 Shot but CLIP for 5 Shot.
+
+Therefore, the notebook currently selects the best configuration for every dataset and (K), rather than one final embedding for each classifier.
+
+If the objective is to choose the embedding that continues to Stage 2 and Stage 3, select one embedding for each classifier and dataset across all values of (K).
+
+For example:
+
+1. Prototype Classifier on CIFAR: DINOv2
+
+2. Linear Probe on CIFAR: one selected embedding for both 1 Shot and 5 Shot
+
+3. Zero Shot: CLIP
+
+The selection can use average validation rank across the different values of (K).
+
+## Statistical Selection
+
+The paired table currently compares Linear Probe against Prototype within the same embedding.
+
+That is useful, but it does not validate the embedding selection itself.
+
+You should also compare:
+
+1. CLIP Prototype against DINOv2 Prototype
+
+2. CLIP Prototype against ResNet Prototype
+
+3. CLIP Linear Probe against DINOv2 Linear Probe
+
+4. CLIP Linear Probe against ResNet Linear Probe
+
+These comparisons should use paired accuracy differences on the same validation Episodes.
+
+If two embeddings are statistically tied, select the smaller embedding.
+
+## Small Presentation Fix
+
+The Stage 3 diagram contains:
+
+```text
+nh.Linear
+```
+
+It should be:
+
+```text
+nn.Linear
+```
+
+## Final Opinion
+
+The notebook is now excellent as a Baseline evaluation and presentation.
+
+Before calling the Final Embedding Selection complete, change the selection source from test results to validation results and select one stable embedding for each classifier rather than changing the embedding according to (K).
+
+After those corrections, Stage 1 will be genuinely complete and ready for Stage 2.

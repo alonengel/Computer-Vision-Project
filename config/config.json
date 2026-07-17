@@ -29,5 +29,9 @@
   },
   "smoke": {
     "n_episodes": 20
+  },
+  "selection": {
+    "seed": 123,
+    "n_episodes": 600
   }
 }

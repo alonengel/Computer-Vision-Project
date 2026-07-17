@@ -20,7 +20,8 @@ from src.utils import allow_insecure_downloads, get_device
 
 POOL_SPECS = [("mnist", "train"), ("mnist", "test"),
               ("cifar10", "train"), ("cifar10", "test"),
-              ("mini_imagenet", "test")]
+              ("mini_imagenet", "test"),
+              ("mini_imagenet", "val")]  # R&L val classes: embedding selection only
 
 
 def main():
@@ -47,10 +48,11 @@ def main():
         if get_device() == "cuda":
             torch.cuda.empty_cache()
 
-    for ds in ("mnist", "cifar10", "mini_imagenet"):
-        split = "test" if ds == "mini_imagenet" else "train"
+    for ds, split, text_key in [("mnist", "train", "mnist"), ("cifar10", "train", "cifar10"),
+                                ("mini_imagenet", "test", "mini_imagenet"),
+                                ("mini_imagenet", "val", "mini_imagenet_val")]:
         names = load_features(ds, split, "clip_vitb32")["class_names"]
-        print(f"CLIP text embeddings: {cache_clip_text_embeddings(ds, names).name}")
+        print(f"CLIP text embeddings: {cache_clip_text_embeddings(text_key, names).name}")
 
     # Class-mean prototypes from TRAIN splits only (ADR 0003): full-eval-split
     # statistics must never become stage-2 training targets — that would leak

@@ -24,8 +24,11 @@ The encoder stays frozen in Stages 2–3.
 adjusted after observing any test metric: linear probe = Adam, 300 steps, lr 0.01,
 weight decay 0, init 0.01·N(0,1) (seeded), full-batch on the support set, loss =
 per-episode mean CE (sum over episodes / S), identical configuration for every
-dataset and K. Prompt templates come from the published OpenAI CLIP lists. The
-Mini-ImageNet validation classes were not used for anything in Stage 1.
+dataset and K. Prompt templates come from the published OpenAI CLIP lists. No
+hyperparameter or selection decision uses test data: the final embedding selection
+(§7) runs on **validation episodes** — the 16 R&L validation classes for
+Mini-ImageNet (their canonical purpose) and train-split episodes for MNIST/CIFAR-10
+(seed 123, disjoint from all test evaluation).
 
 **Paired statistical comparisons.** All methods share identical episodes, so method
 comparisons use the per-episode accuracy *differences* (mean ± 95% CI), which is far

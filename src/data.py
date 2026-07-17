@@ -127,6 +127,27 @@ def simple_path(dataset, k_shot, seed):
     return episodes_dir() / f"{dataset}_simple_{k_shot}s_seed{seed}.pt"
 
 
+def selection_path(dataset, n_way, k_shot, seed):
+    """Validation-selection episodes (disjoint from test episodes by pool and seed):
+    MNIST/CIFAR-10 sampled from the train split, Mini-ImageNet from the R&L val classes."""
+    return episodes_dir() / f"{dataset}_valsel_{n_way}w{k_shot}s_seed{seed}.pt"
+
+
+def ensure_selection_episodes(dataset, labels):
+    """Create the validation-selection episode files from a label array if missing.
+    `labels` must come from the selection pool (train split / val classes)."""
+    cfg = load_config()
+    ep, sel = cfg["episodic"], cfg["selection"]
+    paths = []
+    for k in ep["shots"]:
+        path = selection_path(dataset, ep["n_way"], k, sel["seed"])
+        if not path.exists():
+            torch.save(sample_episodes(labels, ep["n_way"], k, ep["n_query"],
+                                       sel["n_episodes"], sel["seed"]), path)
+        paths.append(path)
+    return paths
+
+
 def sample_episodes(labels, n_way, k_shot, n_query, n_episodes, seed):
     """Disjoint support/query index tensors for n_episodes N-way K-shot episodes."""
     rng = np.random.default_rng(seed)

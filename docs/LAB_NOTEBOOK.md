@@ -129,6 +129,17 @@ A co-member's LLM review of the notebook (`_docs/feedbackImprove.txt`, 8.5/10) w
 
 **Architecture diagrams** (`scripts/make_architecture_figs.py`): `arch_baselines.png` — the three heads (prototype / linear probe / zero-shot CLIP) as box-flow panels with formulas and training notes; `arch_stage2_advised.png` — advised Stage-2 (FM as decision layer: x₀ = f(x) transported to per-episode support prototypes or text embeddings, nearest-target classification) and Stage-3 (frozen encoder → FM → nn.Linear, trained jointly with CE) designs, each on its dataset's selected embedding. Placed as report Figures 2 and 11 (others renumbered) and in notebook §4 and §7. Notebook now 30 cells, executes end-to-end.
 
+## 2026-07-17 — Second teammate LLM review: selection moved to validation data
+
+Second LLM review (`_docs/feedbackImprove1.txt`, 9.5/10) caught one genuine methodological flaw plus a design improvement; user independently caught a third:
+
+1. **Selection leakage (valid, serious):** `best_baselines.json` was selected on *test* episodic accuracy. Fixed with the standard select–freeze–evaluate protocol: selection episodes now come from data disjoint from all test evaluation — Mini-ImageNet's 16 R&L **validation classes** (features + val text embeddings extracted for all backbones; their canonical purpose) and **train-split** episodes for MNIST/CIFAR-10 (seed 123, 600 eps/K, saved as `*_valsel_*` files). Test numbers are now a one-time read-out for the selected config.
+2. **One embedding per (dataset, head) across K (valid):** selection = mean val accuracy over K∈{1,5} + paired per-episode check vs the runner-up on the same val episodes; statistical tie → smaller embedding.
+3. **Zero-shot K-dimension mistake (user catch):** K never applied to zero-shot (no support); its selection axis is the *prompt variant* per dataset.
+4. Rejected: the review's "nh.Linear" typo claim — the figure correctly renders `nn.Linear` (LLM misread).
+
+**Selection results (validation-based):** prototype → CLIP-eucl on MNIST (statistical tie +0.04±0.07, CLIP kept), DINOv2-cos on CIFAR-10 (+1.16±0.18) and Mini-ImageNet (+0.43±0.11); linear → CLIP everywhere (+2.51/+1.67/+0.67); zero-shot → single prompt on MNIST (+2.96), ensemble on CIFAR-10/Mini-ImageNet. Validation choice agrees with what test would have chosen — the selection generalizes. ResNet-50 stays excluded on Mini-ImageNet (val classes are ImageNet-1k too). All val accuracies in `results/metrics/selection_validation.csv`; docs' "val classes unused" claims corrected; CLAUDE.md rule updated ("never select or tune on test"). Notebook rebuilt (30 cells).
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.

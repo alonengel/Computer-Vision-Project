@@ -36,6 +36,8 @@ PROMPT_TEMPLATES = {
         "a bright photo of a {}.",
     ],
 }
+# Validation-class text embeddings (selection only) use the same templates.
+PROMPT_TEMPLATES["mini_imagenet_val"] = PROMPT_TEMPLATES["mini_imagenet"]
 
 
 def build_backbone(name):
