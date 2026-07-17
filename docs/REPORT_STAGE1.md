@@ -13,7 +13,7 @@ We establish few-shot classification baselines over frozen pretrained embeddings
 
 ## 1 · Introduction
 
-Few-shot classification asks a model to recognize classes from a handful of labeled examples ("shots"). A strong and now-standard recipe is to *freeze* a pretrained encoder and learn only a lightweight decision rule over its embeddings. Stage 1 establishes rigorous baselines for exactly this setting; Stages 2–3 will replace or augment the decision rule with a Flow Matching model and must be compared against these baselines on identical data.
+Few-shot classification asks a model to recognize classes from a handful of labeled examples ("shots"). A strong and now-standard recipe is to *freeze* a pretrained encoder and learn only a lightweight decision rule over its embeddings. Stage 1 establishes rigorous baselines for exactly this setting. Its purpose is **selection, not ranking**: the goal is not to declare one head better than another, but to find the *strongest configuration of each classifier function* — the best encoder per head per dataset — so that Stages 2–3, which replace or augment the decision rule with a Flow Matching model, are measured against the hardest possible baseline on identical data (§4, "Selected reference baselines").
 
 We evaluate three classifier heads over frozen embeddings:
 
@@ -163,6 +163,16 @@ Bold = best per column. Zero-shot CLIP (support- and therefore K/seed-independen
 On CLIP the probe wins all six settings; on DINOv2 the prototype wins five of six (the probe recovers only on MNIST 5-shot); on ResNet-50 the outcome is split. Two forces explain the pattern: (i) where embeddings cluster tightly, class means are near-optimal and training adds little — and at K=1 the probe overfits a single example while the prototype *is* that example; (ii) our probe budget (Adam, 300 steps, lr 0.01, fixed a priori per §2.5) is evidently better matched to CLIP's normalized 512-d features than to DINOv2's CLS tokens or ResNet-50's unnormalized 2048-d activations. Tuning the probe per encoder might close these gaps, but would require validation-split selection (not performed in Stage 1 by design). The honest conclusion is therefore scoped: **with a fixed a-priori training budget, the probe-vs-prototype ranking depends on the encoder** — on MNIST, extra shots consistently benefit the trained boundary more than the mean (the K=1→5 trend is positive for all three encoders), while on well-clustered natural-image embeddings the prototype is the more robust default.
 
 **The Mini-ImageNet pretraining caveat.** Our setting is *few-shot classification over frozen pretrained foundation-model embeddings*, and near-ceiling Mini-ImageNet numbers must be read in that light — they are not comparable to the traditional few-shot literature, where encoders are trained only on the 64 R&L train classes. The strongest form of the caveat applies to ResNet-50: its 97.4% 1-shot prototype accuracy is *not* few-shot skill — the 20 R&L test classes are ImageNet-1k classes, so supervised ResNet-50 saw them, labeled, during pretraining (entries marked † throughout). A weaker form applies to CLIP and DINOv2 as well: neither trains on ImageNet labels, but their web-scale pretraining corpora certainly contain images and semantic categories close to the test classes, which is precisely why their frozen embeddings are so strong. ResNet-50 also shows an 18.7-point cosine-vs-Euclidean gap on 1-shot Mini-ImageNet (97.38 vs 78.69) — its unnormalized feature magnitudes make Euclidean prototype distances noisy at K=1, a classic argument for cosine as the primary metric.
+
+**Selected reference baselines (Stage-2 targets).** Since the encoder-per-head choice matters (above), each classifier function gets its own strongest configuration — selected by episodic accuracy, excluding the contaminated ResNet-50 × Mini-ImageNet cells, and committed machine-readably to `results/artifacts/best_baselines.json` (with within-CI alternatives listed) so Stage 2 loads its targets rather than re-deriving them:
+
+| Head | MNIST | CIFAR-10 | Mini-ImageNet |
+|---|---|---|---|
+| Prototype | DINOv2-eucl (1s) / **CLIP-cos (5s)** | **DINOv2-cos** | **DINOv2** (eucl 1s / cos 5s) |
+| Linear probe | **CLIP** | **CLIP** | DINOv2 (1s) / **CLIP (5s)** |
+| Zero-shot CLIP | **single prompt** | **prompt ensemble** | **prompt ensemble** |
+
+A Stage-2 Flow-Matching variant of a head counts as an improvement only if it beats *this* configuration of that head (paired per-episode CI on the same episode files).
 
 **Headroom for Stages 2–3.** Mini-ImageNet 5-way is near ceiling (≥ 97% for most heads) and will not differentiate Flow-Matching variants; MNIST (78% prototype / 86.6% probe at 5-shot, 73/88.6% at all-classes 10-shot) and the CIFAR-10 support-based heads leave the clearest headroom. This is where Stage 2/3 gains should be demonstrated.
 

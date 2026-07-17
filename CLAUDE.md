@@ -16,6 +16,7 @@ Stage 1 (baselines) is complete; Stage 2 (Flow Matching as final layer) is next.
 
 - **Fixed episodes (ADR 0002):** every method — in every stage — evaluates on the committed index files in `results/artifacts/episodes/`. Never resample. Episode files carry a `pool_fingerprint` asserted against feature caches at eval time; a mismatch means regenerate, not bypass.
 - **No eval-split statistics as training targets (ADR 0003):** Stage 2/3 Flow-Matching targets are per-episode support prototypes or CLIP text embeddings only. Train-split prototypes exist for train-split use.
+- **Stage-2 comparisons target the selected baselines:** `results/artifacts/best_baselines.json` holds the strongest configuration of each classifier head per dataset (Stage 1 was selection, not ranking). A Flow-Matching variant of a head must beat *that* configuration, paired on the same episodes — not a weaker variant of it.
 - **Backbones stay frozen (ADR 0001).** Embeddings come from the caches in `results/features/` (regenerable via `tasks.ps1 extract`).
 - `timm/mini-imagenet` is pinned to revision `bd8779f9d33c061ea6e75fdd3bce4e43dd679060` in `src/data.py`; do not unpin.
 - Hyperparameters are fixed a priori (report §2.5). Never tune anything on test data — including reacting to smoke-run numbers (smoke runs use test episodes).

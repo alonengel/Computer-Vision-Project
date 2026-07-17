@@ -1,0 +1,177 @@
+{
+  "note": "Strongest Stage-1 baseline per classifier head - the reference Stages 2-3 must beat on the same episode files. ResNet-50 x Mini-ImageNet excluded (label contamination).",
+  "selection_metric": "episodic accuracy, 600 fixed episodes",
+  "selection": {
+    "mnist": {
+      "prototype": {
+        "1shot": {
+          "classifier": "proto_eucl__dinov2_vits14",
+          "backbone": "dinov2_vits14",
+          "acc": 0.5676,
+          "ci95": 0.0092,
+          "within_ci_alternatives": [
+            "proto_cos__clip_vitb32",
+            "proto_cos__dinov2_vits14",
+            "proto_cos__resnet50",
+            "proto_eucl__clip_vitb32"
+          ]
+        },
+        "5shot": {
+          "classifier": "proto_cos__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.7801,
+          "ci95": 0.006,
+          "within_ci_alternatives": [
+            "proto_eucl__clip_vitb32"
+          ]
+        }
+      },
+      "linear": {
+        "1shot": {
+          "classifier": "linear__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.5996,
+          "ci95": 0.0086,
+          "within_ci_alternatives": []
+        },
+        "5shot": {
+          "classifier": "linear__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.866,
+          "ci95": 0.0044,
+          "within_ci_alternatives": []
+        }
+      },
+      "zeroshot_clip": {
+        "1shot": {
+          "classifier": "clip_zeroshot__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.5961,
+          "ci95": 0.0088,
+          "within_ci_alternatives": []
+        },
+        "5shot": {
+          "classifier": "clip_zeroshot__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.5953,
+          "ci95": 0.0089,
+          "within_ci_alternatives": []
+        }
+      }
+    },
+    "cifar10": {
+      "prototype": {
+        "1shot": {
+          "classifier": "proto_cos__dinov2_vits14",
+          "backbone": "dinov2_vits14",
+          "acc": 0.7734,
+          "ci95": 0.0072,
+          "within_ci_alternatives": []
+        },
+        "5shot": {
+          "classifier": "proto_cos__dinov2_vits14",
+          "backbone": "dinov2_vits14",
+          "acc": 0.9195,
+          "ci95": 0.0037,
+          "within_ci_alternatives": [
+            "proto_eucl__dinov2_vits14"
+          ]
+        }
+      },
+      "linear": {
+        "1shot": {
+          "classifier": "linear__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.7686,
+          "ci95": 0.008,
+          "within_ci_alternatives": []
+        },
+        "5shot": {
+          "classifier": "linear__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.9082,
+          "ci95": 0.0037,
+          "within_ci_alternatives": [
+            "linear__dinov2_vits14"
+          ]
+        }
+      },
+      "zeroshot_clip": {
+        "1shot": {
+          "classifier": "clip_zeroshot_ens__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.9344,
+          "ci95": 0.0027,
+          "within_ci_alternatives": []
+        },
+        "5shot": {
+          "classifier": "clip_zeroshot_ens__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.9322,
+          "ci95": 0.0027,
+          "within_ci_alternatives": [
+            "clip_zeroshot__clip_vitb32"
+          ]
+        }
+      }
+    },
+    "mini_imagenet": {
+      "prototype": {
+        "1shot": {
+          "classifier": "proto_eucl__dinov2_vits14",
+          "backbone": "dinov2_vits14",
+          "acc": 0.9457,
+          "ci95": 0.0047,
+          "within_ci_alternatives": [
+            "proto_cos__dinov2_vits14"
+          ]
+        },
+        "5shot": {
+          "classifier": "proto_cos__dinov2_vits14",
+          "backbone": "dinov2_vits14",
+          "acc": 0.9856,
+          "ci95": 0.0015,
+          "within_ci_alternatives": []
+        }
+      },
+      "linear": {
+        "1shot": {
+          "classifier": "linear__dinov2_vits14",
+          "backbone": "dinov2_vits14",
+          "acc": 0.9292,
+          "ci95": 0.0053,
+          "within_ci_alternatives": []
+        },
+        "5shot": {
+          "classifier": "linear__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.9826,
+          "ci95": 0.0016,
+          "within_ci_alternatives": [
+            "linear__dinov2_vits14"
+          ]
+        }
+      },
+      "zeroshot_clip": {
+        "1shot": {
+          "classifier": "clip_zeroshot_ens__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.9908,
+          "ci95": 0.001,
+          "within_ci_alternatives": [
+            "clip_zeroshot__clip_vitb32"
+          ]
+        },
+        "5shot": {
+          "classifier": "clip_zeroshot_ens__clip_vitb32",
+          "backbone": "clip_vitb32",
+          "acc": 0.991,
+          "ci95": 0.001,
+          "within_ci_alternatives": [
+            "clip_zeroshot__clip_vitb32"
+          ]
+        }
+      }
+    }
+  }
+}
