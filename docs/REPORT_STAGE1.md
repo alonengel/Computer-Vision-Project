@@ -53,7 +53,7 @@ All backbones are frozen; embeddings are extracted once per (dataset, split, bac
 ### 2.4 Classifier details
 
 - **Prototype**: no training; prototypes recomputed per episode from support only.
-- **Linear probe**: linear head (weights + bias as in `nn.Linear`), CrossEntropyLoss, Adam (300 steps, lr 0.01), trained on support embeddings only. For episodic evaluation the 600 per-episode heads are optimized jointly as one batched tensor `[600, C, dim]` with the loss summed over episodes and scaled by 1/S — each head then receives exactly its independent-head mean-CE gradient, so this is equivalent to (and two orders of magnitude faster than) 600 independent heads. Weight init is 0.01·N(0,1) (not `nn.Linear`'s default Kaiming-uniform), fixed a priori.
+- **Linear probe**: linear head (weights + bias as in `nn.Linear`), CrossEntropyLoss, Adam (300 steps, lr 0.01), trained on support embeddings only. For episodic evaluation the 600 per-episode heads are optimized jointly as one batched tensor `[600, C, dim]` with the loss summed over episodes and scaled by 1/S — each head then receives exactly its independent-head mean-CE gradient, so this is equivalent to 600 independent heads. The equivalence and the speedup are verified empirically in the benchmark of §6 (Figure 10): identical predictions on all 45,000 queries of every config, 373–455× faster. Weight init is 0.01·N(0,1) (not `nn.Linear`'s default Kaiming-uniform), fixed a priori.
 - **Zero-shot CLIP**: dataset-specific prompt templates (e.g. `'a photo of the number: "{}".'` for MNIST, `'a photo of a {}.'` for CIFAR-10/Mini-ImageNet); we report a single-prompt variant and a prompt-ensemble variant (mean of per-template normalized embeddings, re-normalized). In episodic mode only the episode's 5 classes are scored — the correct protocol for N-way comparability (every head faces the same 5-way decision), but note these numbers are therefore *not* comparable to full-label-set zero-shot accuracies in the literature.
 
 ### 2.5 Hyperparameter provenance
@@ -176,6 +176,14 @@ How the gap evolves with K depends on embedding quality: on MNIST it grows, whil
 | Independent repro check from raw artifacts | table numbers are verifiable without re-running experiments |
 | Episodic protocol also run on MNIST/CIFAR-10 | the spec assigns them the simple protocol only; episodic runs added for cross-dataset comparability with Mini-ImageNet |
 | Episode/feature integrity fingerprints + pinned dataset revision | any upstream dataset change fails loudly instead of silently corrupting labels |
+| Batched episodic probe training + equivalence benchmark | 600 heads trained jointly; Figure 10 proves identical predictions at 373–455× speedup |
+
+### Engineering benchmark: batched vs sequential probe training
+
+A naive implementation trains the 600 per-episode linear heads one at a time; ours trains them jointly (§2.4). `scripts/bench_probe.py` runs both on every episodic configuration from the *same seeded initialization* and compares predictions query-by-query (Figure 10): the two are **identical on all 45,000 queries of every configuration**, while the batched implementation is 373–455× faster — the full probe grid takes 1.3 s instead of 9.1 min. The gap is kernel-launch overhead: sequential training issues 180,000 GPU steps on microscopic 5×512 problems, whereas batching issues 300 steps on `[600, C, 512]` tensors. The speedup is therefore pure engineering, with provably zero effect on any reported number.
+
+![Figure 10](../results/figures/bench_probe.png)
+*Figure 10 — Sequential vs batched linear-probe training on all six episodic configurations (log scale). Same initialization, identical predictions (45,000/45,000 per configuration), 373–455× faster.*
 
 ## References
 

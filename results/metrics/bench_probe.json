@@ -1,0 +1,68 @@
+[
+  {
+    "dataset": "mnist",
+    "k_shot": 1,
+    "episodes": 600,
+    "t_sequential_s": 92.44,
+    "t_batched_s": 0.227,
+    "speedup": 406.7,
+    "predictions_identical": "45000/45000",
+    "acc_batched": 0.599577784538269,
+    "acc_sequential": 0.599577784538269
+  },
+  {
+    "dataset": "mnist",
+    "k_shot": 5,
+    "episodes": 600,
+    "t_sequential_s": 89.55,
+    "t_batched_s": 0.24,
+    "speedup": 373.4,
+    "predictions_identical": "45000/45000",
+    "acc_batched": 0.8659999966621399,
+    "acc_sequential": 0.8659999966621399
+  },
+  {
+    "dataset": "cifar10",
+    "k_shot": 1,
+    "episodes": 600,
+    "t_sequential_s": 90.82,
+    "t_batched_s": 0.2,
+    "speedup": 454.6,
+    "predictions_identical": "45000/45000",
+    "acc_batched": 0.7686444520950317,
+    "acc_sequential": 0.7686444520950317
+  },
+  {
+    "dataset": "cifar10",
+    "k_shot": 5,
+    "episodes": 600,
+    "t_sequential_s": 92.61,
+    "t_batched_s": 0.231,
+    "speedup": 400.2,
+    "predictions_identical": "45000/45000",
+    "acc_batched": 0.9082444310188293,
+    "acc_sequential": 0.9082444310188293
+  },
+  {
+    "dataset": "mini_imagenet",
+    "k_shot": 1,
+    "episodes": 600,
+    "t_sequential_s": 90.01,
+    "t_batched_s": 0.219,
+    "speedup": 411.3,
+    "predictions_identical": "45000/45000",
+    "acc_batched": 0.9140222072601318,
+    "acc_sequential": 0.9140222072601318
+  },
+  {
+    "dataset": "mini_imagenet",
+    "k_shot": 5,
+    "episodes": 600,
+    "t_sequential_s": 88.2,
+    "t_batched_s": 0.201,
+    "speedup": 438.0,
+    "predictions_identical": "45000/45000",
+    "acc_batched": 0.9826000332832336,
+    "acc_sequential": 0.9826000332832336
+  }
+]

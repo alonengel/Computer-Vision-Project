@@ -59,11 +59,13 @@ class LinearProbe:
         self.seed = seed
         self.W = self.b = None
 
-    def fit(self, Xs, ys):
+    def fit(self, Xs, ys, W0=None):
         B, S, D = Xs.shape
         n_classes = int(ys.max().item()) + 1
-        g = torch.Generator(device="cpu").manual_seed(self.seed)
-        W = (0.01 * torch.randn(B, n_classes, D, generator=g)).to(Xs.device).requires_grad_(True)
+        if W0 is None:
+            g = torch.Generator(device="cpu").manual_seed(self.seed)
+            W0 = 0.01 * torch.randn(B, n_classes, D, generator=g)
+        W = W0.to(Xs.device).clone().requires_grad_(True)
         b = torch.zeros(B, n_classes, device=Xs.device, requires_grad=True)
         opt = torch.optim.Adam([W, b], lr=self.lr, weight_decay=self.weight_decay)
         flat_ys = ys.reshape(-1)

@@ -101,6 +101,20 @@ Ran the deferred cv-expert *presentation* review (all 19 figures inspected visua
 
 Also this session: margin-based hardest-failure selection implemented (was first-12); HF_TOKEN configured (user-level env var); repo pushed to private GitHub `alonengel/Computer-Vision-Project`.
 
+## 2026-07-17 — CLAUDE.md + probe equivalence/speed benchmark
+
+**CLAUDE.md** added: binding rules for future sessions (venv, ADRs, statistics standards, figure style maps, review gates).
+
+**Benchmark: sequential vs batched probe training** (`scripts/bench_probe.py`, user-requested to document the optimization). First run exposed a subtle flaw in my own check: predictions matched only ~98–99% because the sequential reference drew *different* per-episode inits from the shared RNG stream (accuracy deltas ≤ 0.07 pts — converged solutions differ microscopically, near-tie queries flip). Fixed by slicing the identical seeded `[600, C, D]` init draw for both paths (optional `W0` arg on `LinearProbe.fit`; default path values unchanged). Second run, all 6 configs:
+
+```
+identical predictions 45,000/45,000 in every config
+accuracies match committed episodic.csv linear rows exactly
+speedup 373–455x | grid total: 9.1 min sequential -> 1.3 s batched
+```
+
+Cause of the gap: kernel-launch overhead — 180,000 microscopic GPU steps (sequential) vs 300 steps on [600, C, 512] tensors (batched). Documented as §6 engineering benchmark + Figure 10 in the report; results in `results/metrics/bench_probe.json`.
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.
