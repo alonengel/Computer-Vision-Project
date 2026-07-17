@@ -1,0 +1,33 @@
+{
+  "paths": {
+    "data_root": "data",
+    "features_dir": "results/features",
+    "artifacts_dir": "results/artifacts",
+    "metrics_dir": "results/metrics",
+    "figures_dir": "results/figures"
+  },
+  "datasets": ["mnist", "cifar10", "mini_imagenet"],
+  "backbones": {
+    "primary": "clip_vitb32",
+    "comparison": ["clip_vitb32", "dinov2_vits14", "resnet50"]
+  },
+  "episodic": {
+    "n_way": 5,
+    "shots": [1, 5],
+    "n_query": 15,
+    "n_episodes": 600,
+    "seed": 42
+  },
+  "simple": {
+    "shots": [1, 5, 10],
+    "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  },
+  "linear_probe": {
+    "steps": 300,
+    "lr": 0.01,
+    "weight_decay": 0.0
+  },
+  "smoke": {
+    "n_episodes": 20
+  }
+}

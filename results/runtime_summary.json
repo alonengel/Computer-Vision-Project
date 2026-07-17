@@ -1,0 +1,9 @@
+{
+  "python": "3.12.3",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "torch": "2.9.1+rocm7.2.1",
+  "cuda_available": true,
+  "device_name": "AMD Radeon RX 7900 XTX",
+  "device": "cuda",
+  "matmul_ok": true
+}

@@ -1,0 +1,13 @@
+# Data & caches (large, reproducible)
+data/
+results/features/
+*.pt.tmp
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Local scratch
+test.txt
+_run.log

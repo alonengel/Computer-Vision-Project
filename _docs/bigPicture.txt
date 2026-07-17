@@ -1,0 +1,34 @@
+Stage 1: Baselines,
+Implement and evaluate standard Few Shot classification methods on MNIST, CIFAR, and Mini ImageNet using frozen encoder embeddings.
+
+The baselines should include:
+
+Prototype based classification using the mean support embedding of each class,
+
+A PyTorch nn.Linear classifier trained with CrossEntropyLoss,
+
+Zero Shot CLIP classification using image and text similarity,
+
+Use episodic 5 way K shot evaluation for Mini ImageNet and simple K shot evaluation with all classes for MNIST and CIFAR. Report mean accuracy and a 95 percent confidence interval when using episodic evaluation.
+
+Stage 2: Flow Matching as the Final Layer,
+Replace the standard final decision layer with a Flow Matching model.
+
+The Flow Matching model should transform each input embedding toward the corresponding class prototype or CLIP text embedding. Classification is then performed according to the nearest final class representation.
+
+Evaluate two training methods:
+
+Standard Flow Matching training using randomly sampled interpolation points,
+
+Rolled out training using the complete predicted trajectory and a loss on the final result,
+
+Compare the results against all Stage 1 baselines using the same datasets, support sets, query sets, and evaluation metrics.
+
+Stage 3: Flow Matching Before the Linear Classifier,
+Place the Flow Matching model between the frozen encoder and the PyTorch linear classifier:
+
+Encoder → Flow Matching → nn.Linear → Prediction
+
+Train the Flow Matching model and the linear classifier together using CrossEntropyLoss. The Flow Matching layer should learn to reorganize the embedding space so that the final linear classifier can separate the classes more effectively.
+
+Compare this architecture against the standard linear classifier from Stage 1 and the final layer Flow Matching approach from Stage 2.
