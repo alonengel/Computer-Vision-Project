@@ -17,6 +17,36 @@ C:\Users\Alon\Desktop\cv-ex2\rocm_win312\Scripts\python.exe -c "import torch; ..
 
 **Scaffold created.** `config/config.json` (all tunables), `src/utils.py` (seeding, device, ROCm guards, provenance dumps), `tasks.ps1` (one-word task runner pinned to the venv interpreter), README, .gitignore, review agents (`.claude/agents/cv-expert.md`, `critical-reviewer.md`), ADRs 0001–0002.
 
+## 2026-07-17 — Data pipeline, sampler, classifiers, evaluation
+
+**Mini-ImageNet source decision.** Compared HF candidates: `GATE-engine/mini_imagenet` has the R&L split sizes (38,400/9,600/12,000) but only bare integer labels — unusable for CLIP text prompts. Chose **`timm/mini-imagenet`** (100 wnid-labeled classes) and re-partition by *class* ourselves using the canonical Ravi & Larochelle 64/16/20 split lists (fetched from `yaoyao-liu/mini-imagenet-tools`, Ravi split CSVs) plus wnid→readable-name mapping from `tensorflow/models` `imagenet_metadata.txt`. Committed as `config/mini_imagenet_splits.json`. Verified 64/16/20 classes and sensible names (e.g. n02110341 → dalmatian).
+
+**Code written.** `src/data.py` (pools + episode/support sampling, saved indices per ADR 0002), `src/embeddings.py` (3 frozen backbones + feature caching + CLIP text embeddings with prompt ensembles), `src/classifiers.py` (prototype cos/eucl, vectorized-Adam `nn.Linear` probe with CE, zero-shot CLIP), `src/evaluation.py` (episodic mean ± 95% CI, simple mean ± std, raw arrays saved for independent re-derivation), `src/visualize.py` (all figure types), scripts (prepare_data, extract_features, run_experiments, make_figures, repro_check).
+
+**Synthetic sanity tests (no datasets)** — all passed:
+
+```
+sampler: deterministic, disjoint support/query, class-consistent
+simple support: balanced K per class
+proto_cos / proto_eucl / linear on separable Gaussians: 1.000
+zero-shot with oracle text embeddings: 1.000
+shuffled-label control: 0.193 (≈ 0.20 chance) ✓
+```
+
+**Downloads.** MNIST fast; CIFAR-10 mirror slow (~75 kB/s, ~35 min); Mini-ImageNet (HF) after that. `HF_HOME` pointed at `data/hf` so everything stays on D:.
+
+## 2026-07-17 — Datasets downloaded, episode files fixed, sample grids rendered
+
+**Download incident + fix.** Mini-ImageNet (HF, unauthenticated) stalled at shard 13/13 — 0-byte `.incomplete` file, no activity for 23 min. Killed the process and re-ran `scripts/prepare_data.py`; HF resumed from cache (5.8 GB kept), remaining ~1.5 GB completed normally. Lesson: set `HF_TOKEN` (no token was configured on this machine) for higher rate limits; a stall watchdog is worth arming for long unauthenticated downloads.
+
+**Data verified.**
+- MNIST 60k/10k, CIFAR-10 50k/10k (torchvision, on D:).
+- Mini-ImageNet via `timm/mini-imagenet` re-partitioned by the canonical R&L class split: test pool = 13,000 images, 20 classes, exactly 650 per class.
+
+**Episode/support files (ADR 0002): 66 files** under `results/artifacts/episodes/` — episodic 5-way K∈{1,5} seed 42 for all 3 datasets; simple-protocol support sets K∈{1,5,10} × seeds 0–9 for MNIST/CIFAR-10. Committed to git.
+
+**Figures.** `episode_grid_{mnist,cifar10,mini_imagenet}.png` — 5×(support|query) grids, visually verified (correct classes, disjoint sets).
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.
