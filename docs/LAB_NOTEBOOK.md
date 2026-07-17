@@ -47,6 +47,19 @@ shuffled-label control: 0.193 (≈ 0.20 chance) ✓
 
 **Figures.** `episode_grid_{mnist,cifar10,mini_imagenet}.png` — 5×(support|query) grids, visually verified (correct classes, disjoint sets).
 
+## 2026-07-17 — cv-expert methodology review (pre-launch) + fixes
+
+Ran the methodology review agent on the full design *before* the expensive runs, per plan. Verdict: **minor revision** — 4 MAJOR findings, all fixed the same day:
+
+1. **Linear-probe batched loss mis-scaled** — mean-reduction CE divided per-episode gradients by B=600, so "identical to independent heads" was false (Adam eps floor reached 600× sooner; weight decay would break equivalence badly). *Fix:* `reduction="sum"/S` — each head now gets exactly its independent-head mean-CE gradient. Also: `predict()` always refits (no stale-weight guard), docstring/report claims corrected, non-default init documented.
+2. **Silent label corruption on episode/feature misalignment** — `remap` argmax mapped unknown labels to class 0 silently; `timm/mini-imagenet` was unpinned, so an upstream revision change would reorder the pool and produce plausible garbage. *Fix:* HF revision pinned (`bd8779f9`), `pool_fingerprint` (length + sha256 of labels) stored in episode/support files and asserted against feature caches at evaluation time, remap now asserts every label is in the episode class set.
+3. **Hyperparameter provenance undocumented.** *Fix:* new §2.4b in the report — all hyperparameters fixed a priori (probe budget from standard linear-probe practice, prompts from the published OpenAI CLIP lists, cosine-primary as modern default), nothing tuned on any test metric; Mini-ImageNet val classes untouched in Stage 1.
+4. **Test-split prototypes cached as stage-2 FM targets = future leakage.** *Fix:* ADR 0003 — permissible stage-2 targets are per-episode support prototypes or CLIP text embeddings only; full-split prototypes now cached from *train* splits only (mnist/cifar10).
+
+Minor findings also applied: classifier names `proto_cos__clip_vitb32` (no brackets in filenames), zero-shot reported once per dataset in the simple protocol (K/seed-independent, so duplicated "± 0.00" rows dropped; drawn as reference lines in figures), config↔episode-file asserts, CLIP text-cache template check, paired-statistics commitment in §2.3, protocol asymmetry (episodic support from test split) stated explicitly, repro_check handles single-value rows.
+
+Synthetic test suite re-run after all fixes: **all passed** (identical results, incl. chance control 0.193).
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.

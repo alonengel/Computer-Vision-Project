@@ -52,10 +52,12 @@ def main():
         names = load_features(ds, split, "clip_vitb32")["class_names"]
         print(f"CLIP text embeddings: {cache_clip_text_embeddings(ds, names).name}")
 
-    # Class-mean prototypes from full splits — stage-2 FM targets.
-    for ds, split in POOL_SPECS:
+    # Class-mean prototypes from TRAIN splits only (ADR 0003): full-eval-split
+    # statistics must never become stage-2 training targets — that would leak
+    # test data into FM training and be unfair to the support-only baselines.
+    for ds, split in [("mnist", "train"), ("cifar10", "train")]:
         for bb in BACKBONES:
-            p = save_prototype_artifacts(load_features(ds, split, bb), ds, split, bb)
+            save_prototype_artifacts(load_features(ds, split, bb), ds, split, bb)
         print(f"prototypes saved for {ds}/{split} (all backbones)")
     print("done.")
 

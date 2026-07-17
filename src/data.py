@@ -17,6 +17,17 @@ import os
 os.environ.setdefault("HF_HOME", str(repo_path("data", "hf")))
 
 MINI_IMAGENET_HF_ID = "timm/mini-imagenet"
+# Pinned revision: upstream changes must never silently reorder the pool (ADR 0002).
+MINI_IMAGENET_REVISION = "bd8779f9d33c061ea6e75fdd3bce4e43dd679060"
+
+
+def labels_fingerprint(labels):
+    """Stable fingerprint of a pool's label array; stored in episode files and
+    checked against feature caches at evaluation time to catch misalignment."""
+    import hashlib
+
+    arr = np.ascontiguousarray(np.asarray(labels, dtype=np.int64))
+    return f"{len(arr)}:{hashlib.sha256(arr.tobytes()).hexdigest()[:16]}"
 
 
 class Pool:
@@ -74,7 +85,7 @@ def _mini_imagenet_pool(split):
     wnids = sorted(class_split)
     class_names = [class_split[w] for w in wnids]
 
-    hf = load_dataset(MINI_IMAGENET_HF_ID)
+    hf = load_dataset(MINI_IMAGENET_HF_ID, revision=MINI_IMAGENET_REVISION)
     merged = concatenate_datasets([hf[s] for s in hf])
     hf_names = merged.features["label"].names
     assert len(hf_names) == 100, f"expected 100 classes, got {len(hf_names)}"
@@ -137,6 +148,7 @@ def sample_episodes(labels, n_way, k_shot, n_query, n_episodes, seed):
         "support_idx": torch.from_numpy(support),
         "query_idx": torch.from_numpy(query),
         "n_way": n_way, "k_shot": k_shot, "n_query": n_query, "seed": seed,
+        "pool_fingerprint": labels_fingerprint(labels),
     }
 
 
@@ -148,7 +160,8 @@ def sample_support(labels, k_shot, seed):
         rng.choice(np.flatnonzero(labels == c), size=k_shot, replace=False)
         for c in np.unique(labels)
     ])
-    return {"support_idx": torch.from_numpy(idx), "k_shot": k_shot, "seed": seed}
+    return {"support_idx": torch.from_numpy(idx), "k_shot": k_shot, "seed": seed,
+            "pool_fingerprint": labels_fingerprint(labels)}
 
 
 def build_all_episode_files(pools_by_dataset):

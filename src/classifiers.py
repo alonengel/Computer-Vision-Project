@@ -38,13 +38,17 @@ class PrototypeClassifier:
 
 
 class LinearProbe:
-    """nn.Linear head trained with CrossEntropyLoss + Adam on the support set.
+    """Linear head (weights + bias, as in nn.Linear) trained with CrossEntropyLoss
+    + Adam on the support set.
 
     Training is vectorized over the episode batch: weights [B, C, D] are optimized
-    jointly with one Adam instance — mathematically identical to B independent
-    nn.Linear heads (verified: same CE gradients), but hundreds of times faster
-    for 600-episode evaluation. `as_module()` returns a plain nn.Linear carrying
-    episode-0 weights for stage-3 end-to-end use.
+    jointly with one Adam instance. The loss uses reduction='sum' scaled by 1/S, so
+    ∂L/∂W_b equals each episode's own mean-CE gradient — exactly equivalent to B
+    independent heads (same gradients, same per-parameter Adam state and weight
+    decay), but hundreds of times faster for 600-episode evaluation. Init is
+    0.01·N(0,1) (fixed a priori), not nn.Linear's default Kaiming-uniform.
+    `as_module()` returns a plain nn.Linear carrying one episode's weights for
+    stage-3 end-to-end use.
     """
 
     def __init__(self, steps=None, lr=None, weight_decay=None, seed=0):
@@ -66,15 +70,17 @@ class LinearProbe:
         for _ in range(self.steps):
             opt.zero_grad()
             logits = torch.einsum("bsd,bcd->bsc", Xs, W) + b.unsqueeze(1)
-            loss = F.cross_entropy(logits.reshape(B * S, n_classes), flat_ys)
+            # sum/S = per-episode mean CE summed over episodes -> each episode's
+            # head gets exactly its independent-head gradient (not scaled by 1/B)
+            loss = F.cross_entropy(logits.reshape(B * S, n_classes), flat_ys,
+                                   reduction="sum") / S
             loss.backward()
             opt.step()
         self.W, self.b = W.detach(), b.detach()
         return self
 
     def predict(self, Xs, ys, Xq):
-        if self.W is None or self.W.shape[0] != Xs.shape[0]:
-            self.fit(Xs, ys)
+        self.fit(Xs, ys)  # always refit: no silent reuse of stale weights
         return torch.einsum("bqd,bcd->bqc", Xq, self.W) + self.b.unsqueeze(1)
 
     def as_module(self, episode=0):

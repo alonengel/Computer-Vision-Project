@@ -33,16 +33,25 @@ def episode_tensors(features, episode, device=None):
     Episode class ids are remapped to 0..N-1 (position in episode['classes']).
     Returns Xs [B,S,D], ys [B,S], Xq [B,Q,D], yq [B,Q], classes [B,N] (original ids).
     """
+    from .data import labels_fingerprint
+
     device = device or get_device()
     feats = features["features"].to(device)
     labels = features["labels"]
+    fp = episode.get("pool_fingerprint")
+    if fp is not None:
+        actual = labels_fingerprint(labels.numpy())
+        assert actual == fp, (f"episode/feature pool mismatch: episode was sampled from "
+                              f"pool {fp} but features have {actual} — regenerate one of them")
     sup, qry, cls = episode["support_idx"], episode["query_idx"], episode["classes"]
     Xs, Xq = feats[sup], feats[qry]
-    n_way = episode["n_way"]
 
     def remap(idx):
         orig = labels[idx]  # [B, S]
-        return (orig.unsqueeze(-1) == cls.unsqueeze(1)).float().argmax(-1)
+        hit = orig.unsqueeze(-1) == cls.unsqueeze(1)
+        assert bool(hit.any(-1).all()), \
+            "episode sample label not in episode classes — episode/feature mismatch"
+        return hit.float().argmax(-1)
 
     return Xs, remap(sup).long().to(device), Xq, remap(qry).long().to(device), cls.to(device)
 
@@ -64,7 +73,13 @@ def run_simple(train_features, test_features, support, classifier):
     All classes are present, so zero-shot CLIP needs no class subset here.
     Returns (accuracy, predictions, true_labels) — predictions kept for confusion matrices.
     """
+    from .data import labels_fingerprint
+
     device = get_device()
+    fp = support.get("pool_fingerprint")
+    if fp is not None:
+        actual = labels_fingerprint(train_features["labels"].numpy())
+        assert actual == fp, f"support/feature pool mismatch: {fp} vs {actual}"
     Xs = train_features["features"][support["support_idx"]].unsqueeze(0).to(device)
     ys = train_features["labels"][support["support_idx"]].unsqueeze(0).long().to(device)
     Xq = test_features["features"].unsqueeze(0).to(device)

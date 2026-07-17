@@ -26,7 +26,8 @@ def check_table(table_name, raw_prefix, err_col, err_fn):
             raw_name = f"{raw_prefix}_{row['dataset']}_{row['k_shot']}s_{row['classifier']}"
         raw = np.load(metrics_dir("raw") / f"{raw_name}.npy")
         ok_acc = np.isclose(raw.mean(), row["acc"], atol=1e-6)
-        ok_err = np.isclose(err_fn(raw), row[err_col], atol=1e-6)
+        expected_err = 0.0 if len(raw) < 2 else err_fn(raw)  # single-value rows (zero-shot)
+        ok_err = np.isclose(expected_err, row[err_col], atol=1e-6)
         if not (ok_acc and ok_err):
             bad += 1
             print(f"MISMATCH {raw_name}: table acc={row['acc']:.6f} err={row[err_col]:.6f} "

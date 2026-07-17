@@ -81,10 +81,15 @@ def accuracy_vs_k(df, dataset, name=None):
     fig, ax = plt.subplots(figsize=(8, 5.5))
     for clf, g in df.groupby("classifier"):
         g = g.sort_values("k_shot")
+        if (g["k_shot"] == 0).all():  # zero-shot: K-independent -> reference line
+            ax.axhline(100 * g["acc"].iloc[0], linestyle="--", alpha=0.7,
+                       color="gray" if "ens" not in clf else "black",
+                       label=f"{clf} (K-independent)")
+            continue
         ax.errorbar(g["k_shot"], 100 * g["acc"], yerr=100 * g["err"], marker="o",
                     capsize=4, label=clf)
     ax.set_xlabel("K (shots per class)"); ax.set_ylabel("accuracy (%)")
-    ax.set_xticks(sorted(df["k_shot"].unique()))
+    ax.set_xticks(sorted(df.loc[df["k_shot"] > 0, "k_shot"].unique()))
     ax.set_title(f"{dataset}: accuracy vs. shots"); ax.legend()
     return _save(fig, name or f"acc_vs_k_{dataset}.png")
 
