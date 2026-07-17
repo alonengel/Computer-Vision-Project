@@ -53,8 +53,13 @@ All backbones are frozen; embeddings are extracted once per (dataset, split, bac
 ### 2.4 Classifier details
 
 - **Prototype**: no training; prototypes recomputed per episode from support only.
-- **Linear probe**: linear head (weights + bias as in `nn.Linear`), CrossEntropyLoss, Adam (300 steps, lr 0.01), trained on support embeddings only. For episodic evaluation the 600 per-episode heads are optimized jointly as one batched tensor `[600, C, dim]` with the loss summed over episodes and scaled by 1/S — each head then receives exactly its independent-head mean-CE gradient, so this is equivalent to 600 independent heads. The equivalence and the speedup are verified empirically in the benchmark of §6 (Figure 10): identical predictions on all 45,000 queries of every config, 373–455× faster. Weight init is 0.01·N(0,1) (not `nn.Linear`'s default Kaiming-uniform), fixed a priori.
+- **Linear probe**: linear head (weights + bias as in `nn.Linear`), CrossEntropyLoss, Adam (300 steps, lr 0.01), trained on support embeddings only. For episodic evaluation the 600 per-episode heads are optimized jointly as one batched tensor `[600, C, dim]` with the loss summed over episodes and scaled by 1/S — each head then receives exactly its independent-head mean-CE gradient, so this is equivalent to 600 independent heads. The equivalence and the speedup are verified empirically in the benchmark of §6 (Figure 12): identical predictions on all 45,000 queries of every config, 373–455× faster. Weight init is 0.01·N(0,1) (not `nn.Linear`'s default Kaiming-uniform), fixed a priori.
 - **Zero-shot CLIP**: dataset-specific prompt templates (e.g. `'a photo of the number: "{}".'` for MNIST, `'a photo of a {}.'` for CIFAR-10/Mini-ImageNet); we report a single-prompt variant and a prompt-ensemble variant (mean of per-template normalized embeddings, re-normalized). In episodic mode only the episode's 5 classes are scored — the correct protocol for N-way comparability (every head faces the same 5-way decision), but note these numbers are therefore *not* comparable to full-label-set zero-shot accuracies in the literature.
+
+Figure 2 shows the three head architectures side by side.
+
+![Figure 2](../results/figures/arch_baselines.png)
+*Figure 2 — Stage 1 baseline architectures. Encoders are always frozen; the prototype head is parameter-free, the linear head trains on support embeddings only, and zero-shot CLIP replaces support images with class-name text embeddings.*
 
 ### 2.5 Hyperparameter provenance
 
@@ -104,14 +109,14 @@ All numbers are re-derivable from the committed raw artifacts via `scripts/repro
 
 Bold = best per column, excluding † entries. † ResNet-50 on Mini-ImageNet (any head) is ImageNet-label-contaminated (§4) and is not an honest few-shot result.
 
-![Figure 2](../results/figures/bars_episodic_5shot.png)
-*Figure 2 — 5-way 5-shot episodic accuracy ± 95% CI on CLIP ViT-B/32 embeddings. Zero-shot CLIP leads on natural images; on MNIST it falls behind every support-based head.*
+![Figure 3](../results/figures/bars_episodic_5shot.png)
+*Figure 3 — 5-way 5-shot episodic accuracy ± 95% CI on CLIP ViT-B/32 embeddings. Zero-shot CLIP leads on natural images; on MNIST it falls behind every support-based head.*
 
-![Figure 3](../results/figures/bars_backbones.png)
-*Figure 3 — Backbone comparison, prototype (cosine), 5-way 5-shot ± 95% CI. Backbone choice moves accuracy more than head choice; the Mini-ImageNet ResNet-50 bar is label-contaminated (§4).*
+![Figure 4](../results/figures/bars_backbones.png)
+*Figure 4 — Backbone comparison, prototype (cosine), 5-way 5-shot ± 95% CI. Backbone choice moves accuracy more than head choice; the Mini-ImageNet ResNet-50 bar is label-contaminated (§4).*
 
-![Figure 4](../results/figures/acc_vs_k_episodic_mnist.png)
-*Figure 4 — MNIST episodic accuracy vs. shots. The trained probe pulls away from the prototype head as K grows on this poorly-separated embedding space; zero-shot CLIP is K-independent and weak here. (CIFAR-10 and Mini-ImageNet counterparts: `results/figures/acc_vs_k_episodic_{cifar10,mini_imagenet}.png`.)*
+![Figure 5](../results/figures/acc_vs_k_episodic_mnist.png)
+*Figure 5 — MNIST episodic accuracy vs. shots. The trained probe pulls away from the prototype head as K grows on this poorly-separated embedding space; zero-shot CLIP is K-independent and weak here. (CIFAR-10 and Mini-ImageNet counterparts: `results/figures/acc_vs_k_episodic_{cifar10,mini_imagenet}.png`.)*
 
 ### 3.2 Simple all-classes protocol (MNIST / CIFAR-10)
 
@@ -131,24 +136,24 @@ Accuracy % on the full 10,000-image test set (10 seeds, ± sample std):
 
 Bold = best per column. Zero-shot CLIP (support- and therefore K/seed-independent): MNIST 48.25% (single) / 47.40% (ensemble); CIFAR-10 88.31% / 88.75% — consistent with commonly reported ViT-B/32 zero-shot CIFAR-10 results (≈ 89–90%, e.g. Radford et al., 2021, and the LAION clip_benchmark; our prompt set is smaller than the full published ensemble).
 
-![Figure 5](../results/figures/acc_vs_k_simple_mnist.png)
-*Figure 5 — MNIST all-classes accuracy vs. shots (± std over 10 seeds); dashed lines are the K-independent zero-shot references. The probe's advantage over the prototype head widens with K. (CIFAR-10 counterpart: `results/figures/acc_vs_k_simple_cifar10.png`.)*
+![Figure 6](../results/figures/acc_vs_k_simple_mnist.png)
+*Figure 6 — MNIST all-classes accuracy vs. shots (± std over 10 seeds); dashed lines are the K-independent zero-shot references. The probe's advantage over the prototype head widens with K. (CIFAR-10 counterpart: `results/figures/acc_vs_k_simple_cifar10.png`.)*
 
-![Figure 6](../results/figures/confusion_cifar10_proto10s.png)
-*Figure 6 — CIFAR-10 confusion matrix, prototype (cosine), 10-shot, seed 0. Errors concentrate in the semantically close pairs cat↔dog and bird↔deer. (MNIST counterpart in `results/figures/`.)*
+![Figure 7](../results/figures/confusion_cifar10_proto10s.png)
+*Figure 7 — CIFAR-10 confusion matrix, prototype (cosine), 10-shot, seed 0. Errors concentrate in the semantically close pairs cat↔dog and bird↔deer. (MNIST counterpart in `results/figures/`.)*
 
-![Figure 7](../results/figures/clip_zeroshot_cifar10.png)
-*Figure 7 — Least confident CIFAR-10 zero-shot predictions (prompt ensemble; green = ground-truth class): even the hardest cases are two-way ambiguities between visually similar classes.*
+![Figure 8](../results/figures/clip_zeroshot_cifar10.png)
+*Figure 8 — Least confident CIFAR-10 zero-shot predictions (prompt ensemble; green = ground-truth class): even the hardest cases are two-way ambiguities between visually similar classes.*
 
-![Figure 8](../results/figures/failures_cifar10.png)
-*Figure 8 — Most confident CIFAR-10 prototype misclassifications, one per (true, predicted) pair. Ship→airplane and animal-pair confusions dominate.*
+![Figure 9](../results/figures/failures_cifar10.png)
+*Figure 9 — Most confident CIFAR-10 prototype misclassifications, one per (true, predicted) pair. Ship→airplane and animal-pair confusions dominate.*
 
 ## 4 · Discussion
 
-**Embedding quality dominates head choice.** The spread across backbones (e.g. CIFAR-10 1-shot prototype: DINOv2 77.3 vs CLIP 72.9 vs ResNet-50 62.3) is larger than the spread across heads on a fixed backbone. The t-SNE panels (Figure 9) visualize this *qualitatively* — t-SNE distorts distances and neighborhood structure, so it is illustration, not evidence — while the quantitative embedding-quality metrics in `results/metrics/embedding_quality.csv` (cosine silhouette score, leave-one-out 1-NN accuracy, within/between-class distance ratio) confirm the same backbone ranking numerically.
+**Embedding quality dominates head choice.** The spread across backbones (e.g. CIFAR-10 1-shot prototype: DINOv2 77.3 vs CLIP 72.9 vs ResNet-50 62.3) is larger than the spread across heads on a fixed backbone. The t-SNE panels (Figure 10) visualize this *qualitatively* — t-SNE distorts distances and neighborhood structure, so it is illustration, not evidence — while the quantitative embedding-quality metrics in `results/metrics/embedding_quality.csv` (cosine silhouette score, leave-one-out 1-NN accuracy, within/between-class distance ratio) confirm the same backbone ranking numerically.
 
-![Figure 9](../results/figures/tsne_cifar10.png)
-*Figure 9 — t-SNE of frozen CIFAR-10 test embeddings per backbone (black star = class prototype); a qualitative visualization whose apparent class separation is consistent with the quantitative metrics and classification results.*
+![Figure 10](../results/figures/tsne_cifar10.png)
+*Figure 10 — t-SNE of frozen CIFAR-10 test embeddings per backbone (black star = class prototype); a qualitative visualization whose apparent class separation is consistent with the quantitative metrics and classification results.*
 
 **Zero-shot CLIP is a very strong baseline on natural images — and fails on MNIST.** On CIFAR-10 and Mini-ImageNet episodic tasks, zero-shot CLIP beats every head that shares its embedding space (93.2 / 99.1% on 5-shot episodes; 93.4 / 99.1% on 1-shot episodes), because its "prototypes" (text embeddings) suffer no 1-or-5-sample estimation noise. (The one head that nominally exceeds it — ResNet-50 prototypes at 99.51% on 5-shot Mini-ImageNet, paired diff +0.40 ± 0.11 vs. the ensemble — is the label-contaminated backbone discussed below, not an honest few-shot comparison.) On MNIST zero-shot collapses to 56–60% episodic / 48% all-classes: handwritten digits are far from CLIP's web-image training distribution. Notably, the prompt *ensemble* hurts MNIST (−2.6 pts episodic 1-shot, −0.85 all-classes): the generic templates dilute the digit-specific prompt — prompt engineering does not transfer across domains without adaptation.
 
@@ -172,7 +177,10 @@ On CLIP the probe wins all six settings; on DINOv2 the prototype wins five of si
 | Linear probe | **CLIP** | **CLIP** | DINOv2 (1s) / **CLIP (5s)** |
 | Zero-shot CLIP | **single prompt** | **prompt ensemble** | **prompt ensemble** |
 
-A Stage-2 Flow-Matching variant of a head counts as an improvement only if it beats *this* configuration of that head (paired per-episode CI on the same episode files).
+A Stage-2 Flow-Matching variant of a head counts as an improvement only if it beats *this* configuration of that head (paired per-episode CI on the same episode files). Figure 11 shows the advised Stage-2/3 architectures, each built on its dataset's selected embedding.
+
+![Figure 11](../results/figures/arch_stage2_advised.png)
+*Figure 11 — Advised Stage-2/3 architectures. Stage 2 transports embeddings toward per-episode support prototypes or CLIP text embeddings (ADR 0003) and classifies by nearest target; Stage 3 inserts the Flow-Matching module before the linear head, trained jointly with CE while the encoder stays frozen. Both use each dataset's selected encoder from `best_baselines.json`.*
 
 **Headroom for Stages 2–3.** Mini-ImageNet 5-way is near ceiling (≥ 97% for most heads) and will not differentiate Flow-Matching variants; MNIST (78% prototype / 86.6% probe at 5-shot, 73/88.6% at all-classes 10-shot) and the CIFAR-10 support-based heads leave the clearest headroom. This is where Stage 2/3 gains should be demonstrated.
 
@@ -193,16 +201,16 @@ A Stage-2 Flow-Matching variant of a head counts as an improvement only if it be
 | Independent repro check from raw artifacts | table numbers are verifiable without re-running experiments |
 | Episodic protocol also run on MNIST/CIFAR-10 | the spec assigns them the simple protocol only; episodic runs added for cross-dataset comparability with Mini-ImageNet |
 | Episode/feature integrity fingerprints + pinned dataset revision | any upstream dataset change fails loudly instead of silently corrupting labels |
-| Batched episodic probe training + equivalence benchmark | 600 heads trained jointly; Figure 10 proves identical predictions at 373–455× speedup |
+| Batched episodic probe training + equivalence benchmark | 600 heads trained jointly; Figure 12 proves identical predictions at 373–455× speedup |
 | Linear probe evaluated on all three backbones | full head × encoder grid; revealed that the probe-vs-prototype ranking is encoder-dependent (§4) |
 | Quantitative embedding-quality metrics | silhouette / 1-NN / distance-ratio table backs the qualitative t-SNE reading |
 
 ### Engineering benchmark: batched vs sequential probe training
 
-A naive implementation trains the 600 per-episode linear heads one at a time; ours trains them jointly (§2.4). `scripts/bench_probe.py` runs both on every episodic configuration from the *same seeded initialization* and compares predictions query-by-query (Figure 10): the two are **identical on all 45,000 queries of every configuration**, while the batched implementation is 373–455× faster — the full probe grid takes 1.3 s instead of 9.1 min. The gap is kernel-launch overhead: sequential training issues 180,000 GPU steps on microscopic 5×512 problems, whereas batching issues 300 steps on `[600, C, 512]` tensors. The speedup is therefore pure engineering, with provably zero effect on any reported number.
+A naive implementation trains the 600 per-episode linear heads one at a time; ours trains them jointly (§2.4). `scripts/bench_probe.py` runs both on every episodic configuration from the *same seeded initialization* and compares predictions query-by-query (Figure 12): the two are **identical on all 45,000 queries of every configuration**, while the batched implementation is 373–455× faster — the full probe grid takes 1.3 s instead of 9.1 min. The gap is kernel-launch overhead: sequential training issues 180,000 GPU steps on microscopic 5×512 problems, whereas batching issues 300 steps on `[600, C, 512]` tensors. The speedup is therefore pure engineering, with provably zero effect on any reported number.
 
-![Figure 10](../results/figures/bench_probe.png)
-*Figure 10 — Sequential vs batched linear-probe training on all six episodic configurations (log scale). Same initialization, identical predictions (45,000/45,000 per configuration), 373–455× faster.*
+![Figure 12](../results/figures/bench_probe.png)
+*Figure 12 — Sequential vs batched linear-probe training on all six episodic configurations (log scale). Same initialization, identical predictions (45,000/45,000 per configuration), 373–455× faster.*
 
 ## References
 

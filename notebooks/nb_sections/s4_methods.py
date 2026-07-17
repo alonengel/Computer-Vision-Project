@@ -11,6 +11,7 @@ All heads share one interface — `predict(Xs, ys, Xq) → scores [B, Q, C]` ove
 **Zero-shot CLIP** — a *semantic reference baseline* based on class names and pretrained image–text alignment: cached text embeddings of dataset-specific prompts (e.g. `'a photo of the number: "{}".'` for MNIST), query scored by image–text cosine similarity. Unlike the two heads above it receives **no support images** — its information source is class names + CLIP pretraining, so it is a reference point rather than an equivalent few-shot method. Single-prompt vs. prompt-ensemble reported separately. In episodic mode only the 5 episode classes are scored.
 """),
     ("code", """
+display(Image(str(REPO / "results" / "figures" / "arch_baselines.png"), width=920))
 display(Image(str(REPO / "results" / "figures" / "bench_probe.png"), width=880))
 """),
 ]

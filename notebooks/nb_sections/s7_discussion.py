@@ -28,6 +28,14 @@ for ds, heads in best.items():
 display(pd.DataFrame(rows))
 """),
     ("markdown", """
+### Advised Stage-2/3 architectures
+
+Each variant is built on **its dataset's selected embedding** (table above) and must beat that configuration, paired on the same episode files:
+"""),
+    ("code", """
+display(Image(str(REPO / "results" / "figures" / "arch_stage2_advised.png"), width=920))
+"""),
+    ("markdown", """
 
 **Artifacts handed to Stage 2/3** (all committed or reproducible via `tasks.ps1 extract`):
 
