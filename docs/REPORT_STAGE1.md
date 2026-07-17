@@ -58,11 +58,67 @@ Per-episode / per-seed raw accuracies are saved (`results/metrics/raw/`); `scrip
 
 ## 3 · Results
 
-> **[TO FILL after full runs]** — episodic tables (5-way 1-shot / 5-shot, all classifiers × datasets, ± 95% CI), simple-protocol tables (MNIST/CIFAR-10, K ∈ {1,5,10}, ± std), backbone comparison, and referenced figures from `results/figures/`.
+All numbers are re-derivable from the committed raw artifacts via `scripts/repro_check.py` (last run: 100/100 rows match). Figures referenced below live in `results/figures/`.
+
+### 3.1 Episodic protocol
+
+**5-way 1-shot (600 episodes, accuracy % ± 95% CI):**
+
+| Classifier | MNIST | CIFAR-10 | Mini-ImageNet |
+|---|---|---|---|
+| Prototype (cosine) — CLIP | 56.56 ± 0.87 | 72.92 ± 0.85 | 89.15 ± 0.64 |
+| Prototype (Euclidean) — CLIP | 56.64 ± 0.87 | 74.07 ± 0.82 | 90.09 ± 0.61 |
+| Linear probe — CLIP | 59.96 ± 0.86 | 76.86 ± 0.80 | 91.40 ± 0.57 |
+| Zero-shot CLIP (single prompt) | 59.61 ± 0.88 | 93.14 ± 0.28 | 99.00 ± 0.10 |
+| Zero-shot CLIP (prompt ensemble) | 56.98 ± 0.89 | 93.44 ± 0.27 | 99.08 ± 0.10 |
+| Prototype (cosine) — DINOv2 | 56.54 ± 0.92 | 77.34 ± 0.72 | 94.42 ± 0.47 |
+| Prototype (Euclidean) — DINOv2 | 56.76 ± 0.92 | 75.30 ± 0.77 | 94.57 ± 0.47 |
+| Prototype (cosine) — ResNet-50 | 55.96 ± 0.82 | 62.30 ± 0.76 | 97.38 ± 0.26 |
+| Prototype (Euclidean) — ResNet-50 | 55.79 ± 0.83 | 57.12 ± 0.80 | 78.69 ± 1.13 |
+
+**5-way 5-shot (600 episodes, accuracy % ± 95% CI):**
+
+| Classifier | MNIST | CIFAR-10 | Mini-ImageNet |
+|---|---|---|---|
+| Prototype (cosine) — CLIP | 78.01 ± 0.60 | 89.16 ± 0.42 | 97.70 ± 0.20 |
+| Prototype (Euclidean) — CLIP | 77.93 ± 0.60 | 89.23 ± 0.42 | 97.66 ± 0.20 |
+| Linear probe — CLIP | 86.60 ± 0.44 | 90.82 ± 0.37 | 98.26 ± 0.16 |
+| Zero-shot CLIP (single prompt) | 59.53 ± 0.89 | 93.03 ± 0.28 | 99.02 ± 0.11 |
+| Zero-shot CLIP (prompt ensemble) | 55.96 ± 0.89 | 93.22 ± 0.27 | 99.10 ± 0.10 |
+| Prototype (cosine) — DINOv2 | 75.61 ± 0.67 | 91.95 ± 0.37 | 98.56 ± 0.15 |
+| Prototype (Euclidean) — DINOv2 | 75.60 ± 0.67 | 91.91 ± 0.36 | 98.01 ± 0.17 |
+| Prototype (cosine) — ResNet-50 | 76.86 ± 0.70 | 81.68 ± 0.48 | 99.51 ± 0.08 |
+| Prototype (Euclidean) — ResNet-50 | 76.87 ± 0.69 | 81.21 ± 0.48 | 99.29 ± 0.10 |
+
+Figures: `bars_episodic_5shot.png` (main comparison), `bars_backbones.png` (backbone comparison), `acc_vs_k_episodic_*.png`.
+
+### 3.2 Simple all-classes protocol (MNIST / CIFAR-10)
+
+Accuracy % on the full 10,000-image test set (10 seeds, ± sample std):
+
+| Classifier | MNIST K=1 | MNIST K=5 | MNIST K=10 | CIFAR-10 K=1 | CIFAR-10 K=5 | CIFAR-10 K=10 |
+|---|---|---|---|---|---|---|
+| Prototype (cosine) — CLIP | 44.31 ± 5.75 | 66.53 ± 2.70 | 73.32 ± 1.88 | 61.07 ± 6.01 | 83.05 ± 1.84 | 86.26 ± 1.80 |
+| Prototype (Euclidean) — CLIP | 44.60 ± 5.66 | 66.37 ± 2.72 | 73.22 ± 1.95 | 62.36 ± 5.48 | 83.02 ± 1.88 | 86.25 ± 1.72 |
+| Linear probe — CLIP | 49.95 ± 5.47 | 79.70 ± 1.41 | 88.62 ± 1.41 | 66.69 ± 4.59 | 86.37 ± 1.36 | 88.93 ± 0.79 |
+| Prototype (cosine) — DINOv2 | 44.17 ± 4.16 | 64.10 ± 4.23 | 70.08 ± 1.57 | 65.36 ± 3.95 | 87.48 ± 1.62 | 90.25 ± 0.76 |
+| Prototype (Euclidean) — DINOv2 | 44.52 ± 4.14 | 64.10 ± 4.19 | 70.03 ± 1.62 | 62.53 ± 4.22 | 87.69 ± 1.51 | 90.22 ± 0.88 |
+| Prototype (cosine) — ResNet-50 | 43.16 ± 6.06 | 64.69 ± 4.73 | 72.68 ± 3.01 | 48.59 ± 3.03 | 69.28 ± 2.26 | 75.25 ± 2.16 |
+| Prototype (Euclidean) — ResNet-50 | 42.96 ± 5.88 | 64.84 ± 4.63 | 72.70 ± 3.01 | 42.91 ± 3.41 | 68.83 ± 2.31 | 75.07 ± 2.42 |
+
+Zero-shot CLIP (support- and therefore K/seed-independent): MNIST 48.25% (single) / 47.40% (ensemble); CIFAR-10 88.31% / 88.75% — the CIFAR-10 figure matches the published ViT-B/32 zero-shot result (≈ 89%). Figures: `acc_vs_k_simple_*.png` (zero-shot drawn as reference lines), `confusion_*_proto10s.png`, `failures_*.png`, `clip_zeroshot_*.png`.
 
 ## 4 · Discussion
 
-> **[TO FILL]** — embedding quality vs. head choice; CLIP zero-shot's MNIST weakness; prototype vs. linear as K grows; prompt-ensemble effect; backbone ranking.
+**Embedding quality dominates head choice.** The spread across backbones (e.g. CIFAR-10 1-shot prototype: DINOv2 77.3 vs CLIP 72.9 vs ResNet-50 62.3) is larger than the spread across heads on a fixed backbone — consistent with the t-SNE panels (`tsne_*.png`), where DINOv2/CLIP separate CIFAR-10 classes cleanly and ResNet-50 does not.
+
+**Zero-shot CLIP is a very strong baseline on natural images — and fails on MNIST.** On CIFAR-10 and Mini-ImageNet episodic tasks, zero-shot CLIP beats every support-based head (93.4 / 99.1% at 5-way), because its "prototypes" (text embeddings) suffer no 1-or-5-sample estimation noise. On MNIST it collapses to 56–60% episodic / 48% all-classes: handwritten digits are far from CLIP's web-image training distribution. Notably, the prompt *ensemble* hurts MNIST (−2.6 pts episodic 1-shot, −0.85 all-classes): the generic templates dilute the digit-specific prompt — prompt engineering does not transfer blindly across domains.
+
+**Prototype vs. linear probe.** The trained probe beats the prototype classifier everywhere, with the paired per-episode gap (§2.3) growing in K and shrinking in embedding quality: +8.59 ± 0.41 (MNIST 5-shot), +1.66 ± 0.21 (CIFAR-10), +0.56 ± 0.13 (Mini-ImageNet) — where embeddings already cluster tightly, class means are near-optimal and training adds little.
+
+**The ResNet-50 Mini-ImageNet caveat.** ResNet-50's 97.4% 1-shot prototype accuracy is *not* evidence of a great few-shot method: the 20 R&L test classes are ImageNet-1k classes, so supervised ResNet-50 saw them, labeled, during pretraining. CLIP/DINOv2 numbers are the honest few-shot references here (neither trains on ImageNet labels). ResNet-50 also shows a 18.7-point cosine-vs-Euclidean gap on 1-shot Mini-ImageNet (97.38 vs 78.69) — its unnormalized feature magnitudes make Euclidean prototype distances noisy at K=1, a classic argument for cosine as the primary metric.
+
+**Headroom for stages 2–3.** Mini-ImageNet 5-way is near ceiling (≥ 97% for most heads) and will not differentiate Flow-Matching variants; MNIST (78% prototype / 86.6% probe at 5-shot, 73/88.6% at all-classes 10-shot) and the CIFAR-10 support-based heads leave the clearest headroom. This is where stage 2/3 gains should be demonstrated.
 
 ## 5 · Limitations
 

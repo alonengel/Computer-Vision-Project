@@ -74,6 +74,14 @@ Synthetic test suite re-run after all fixes: **all passed** (identical results, 
 
 **t-SNE first look**: CLIP/DINOv2 cluster CIFAR-10 cleanly; ResNet-50 visibly smeared — consistent with the smoke accuracies. (Fixed a missing-glyph ★ in the suptitle.)
 
+## 2026-07-17 — Full runs, figures, notebook, report
+
+**Full experiment grid** (600 episodes / 10 seeds) ran clean off cached embeddings in a few minutes. Headlines: zero-shot CLIP dominates natural-image episodic tasks (CIFAR-10 93.4%, Mini-ImageNet 99.1%) but collapses on MNIST (48–60%); linear probe beats prototype everywhere with paired gaps +8.59±0.41 (MNIST 5w5s) → +0.56±0.13 (Mini-ImageNet); prompt ensemble *hurts* MNIST; ResNet-50's 97.4% 1-shot Mini-ImageNet flagged as ImageNet-label-overlap, not few-shot skill; its 18.7-pt cosine-vs-Euclidean gap at K=1 supports cosine-primary.
+
+**repro_check: PASSED** — 100/100 table rows re-derived exactly from raw per-episode/per-seed artifacts.
+
+**All 19 figures regenerated** from full results (t-SNE glyph fix included). **Presentation notebook** built from nb_sections (17 cells) and executed end-to-end via nbconvert without error. **Report** §3 (results tables, generated programmatically from the CSVs — no manual transcription) and §4 (discussion) filled in.
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.

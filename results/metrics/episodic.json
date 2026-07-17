@@ -1,0 +1,542 @@
+[
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.5656222701072693,
+    "ci95": 0.00874300869716866
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.5664000511169434,
+    "ci95": 0.008730333379970465
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.5653555393218994,
+    "ci95": 0.009180023046960034
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.5675778388977051,
+    "ci95": 0.009195845293312877
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.5596222281455994,
+    "ci95": 0.008225193762768982
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.5578666925430298,
+    "ci95": 0.008296517668009196
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.599577784538269,
+    "ci95": 0.008639161860077326
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "clip_zeroshot__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.5960667133331299,
+    "ci95": 0.00880284232638471
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "clip_zeroshot_ens__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.5698444843292236,
+    "ci95": 0.008898933470494674
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.7801333665847778,
+    "ci95": 0.005955672013391177
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.7792889475822449,
+    "ci95": 0.006008774998074648
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.75608891248703,
+    "ci95": 0.006666336582092874
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.7560222148895264,
+    "ci95": 0.006653957525188187
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.7686222791671753,
+    "ci95": 0.006955755513668507
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.7687111496925354,
+    "ci95": 0.006939728257625906
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.8659999370574951,
+    "ci95": 0.0043684434991658845
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "clip_zeroshot__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.5953333377838135,
+    "ci95": 0.008857901115675217
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "clip_zeroshot_ens__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.5596221685409546,
+    "ci95": 0.008888527859980415
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.729200005531311,
+    "ci95": 0.008473029794215867
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.7407333254814148,
+    "ci95": 0.008247765512112513
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.7733556032180786,
+    "ci95": 0.0072182445670655225
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.7529999613761902,
+    "ci95": 0.007703519536168049
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.6229777336120605,
+    "ci95": 0.007633198170894364
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.5711556077003479,
+    "ci95": 0.008038894096804116
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.7686445116996765,
+    "ci95": 0.00798729188038365
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "clip_zeroshot__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.9314000606536865,
+    "ci95": 0.002837288785113476
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "clip_zeroshot_ens__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.9343556761741638,
+    "ci95": 0.002736402725945142
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.8916444778442383,
+    "ci95": 0.004194885155002594
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.8922888040542603,
+    "ci95": 0.004197816124395035
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9194889068603516,
+    "ci95": 0.0037122588867582423
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9190667867660522,
+    "ci95": 0.0035668352329117445
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.8167778253555298,
+    "ci95": 0.004790541112762292
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.8121333718299866,
+    "ci95": 0.004826144969164679
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9082444310188293,
+    "ci95": 0.0037444907291833977
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "clip_zeroshot__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9302889108657837,
+    "ci95": 0.0027603408009954857
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "clip_zeroshot_ens__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9321555495262146,
+    "ci95": 0.002717534230270454
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.8914666771888733,
+    "ci95": 0.006358478945186214
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.9009334444999695,
+    "ci95": 0.006081196952246652
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.9441778659820557,
+    "ci95": 0.004695617063874286
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.9456889033317566,
+    "ci95": 0.004729424195888841
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.9738444089889526,
+    "ci95": 0.0026365414110569177
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.786911129951477,
+    "ci95": 0.011291294957628279
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.9140222072601318,
+    "ci95": 0.005680410308818633
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "clip_zeroshot__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.9900221824645996,
+    "ci95": 0.0010176608759511296
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "clip_zeroshot_ens__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 1,
+    "n_episodes": 600,
+    "acc": 0.9907554984092712,
+    "ci95": 0.0009506357866535635
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9770444631576538,
+    "ci95": 0.002004524521052389
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.976555585861206,
+    "ci95": 0.0019909411082625447
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9856221675872803,
+    "ci95": 0.0014842493182912792
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9800666570663452,
+    "ci95": 0.0017206288364373869
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9950889348983765,
+    "ci95": 0.000828931586619259
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9928666353225708,
+    "ci95": 0.0010455370989328019
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9826000928878784,
+    "ci95": 0.0015808800576380842
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "clip_zeroshot__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9901778101921082,
+    "ci95": 0.0010501870015733783
+  },
+  {
+    "dataset": "mini_imagenet",
+    "classifier": "clip_zeroshot_ens__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "n_way": 5,
+    "k_shot": 5,
+    "n_episodes": 600,
+    "acc": 0.9910444021224976,
+    "ci95": 0.0009905220338899251
+  }
+]

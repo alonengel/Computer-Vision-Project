@@ -1,0 +1,416 @@
+[
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.44310998916625977,
+    "std": 0.057498121586599796
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.44595998525619507,
+    "std": 0.05663256197214427
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.4417399913072586,
+    "std": 0.0415671399056272
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.4451599895954132,
+    "std": 0.041395650022098315
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.4315699815750122,
+    "std": 0.06060327300734174
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.4296199917793274,
+    "std": 0.058798542117574175
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.4994999825954437,
+    "std": 0.054726567495764634
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6652899801731109,
+    "std": 0.027006310378007266
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6637499868869782,
+    "std": 0.02723752154575384
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.641049987077713,
+    "std": 0.04226725917398908
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6410099923610687,
+    "std": 0.04193441998866988
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6469299912452697,
+    "std": 0.04732318067809961
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6484399795532226,
+    "std": 0.046281328628156336
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.7969599843025208,
+    "std": 0.014097053891146743
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7332299828529358,
+    "std": 0.018835427250730882
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7321599781513214,
+    "std": 0.019476997174491383
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.700769978761673,
+    "std": 0.015693593549663536
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7003399848937988,
+    "std": 0.016187783434924368
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7268099844455719,
+    "std": 0.03006661082244547
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7270099878311157,
+    "std": 0.03012574302717015
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.8862099707126617,
+    "std": 0.014069003698936435
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "clip_zeroshot__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 0,
+    "n_seeds": 1,
+    "acc": 0.48249998688697815,
+    "std": 0.0
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "clip_zeroshot_ens__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 0,
+    "n_seeds": 1,
+    "acc": 0.4739999771118164,
+    "std": 0.0
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.6106999814510345,
+    "std": 0.06006612391045138
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.6236299812793732,
+    "std": 0.054792048414668476
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.6535799860954284,
+    "std": 0.039505409628411974
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.625329977273941,
+    "std": 0.04219016011532981
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.4858999937772751,
+    "std": 0.030254039642218764
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.4291399896144867,
+    "std": 0.034144924118068694
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 1,
+    "n_seeds": 10,
+    "acc": 0.6669399797916412,
+    "std": 0.04592028847807699
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.8304799795150757,
+    "std": 0.01837587980079434
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.8302099764347076,
+    "std": 0.01876371203531675
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.8747799754142761,
+    "std": 0.016211370804686553
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.8769199788570404,
+    "std": 0.015146380600754981
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.692769980430603,
+    "std": 0.02255871034033087
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6882799863815308,
+    "std": 0.023130678475282843
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.8637299835681915,
+    "std": 0.01355727954004728
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.8625799715518951,
+    "std": 0.018023800053610657
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.8625099778175354,
+    "std": 0.017203774763913927
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.9025299787521363,
+    "std": 0.007560865952039174
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.9022199809551239,
+    "std": 0.008753385628791976
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7524799823760986,
+    "std": 0.021641774333963415
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "proto_eucl__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7507499754428864,
+    "std": 0.024183014761892968
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "linear__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.8892999708652496,
+    "std": 0.007945783561565304
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "clip_zeroshot__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 0,
+    "n_seeds": 1,
+    "acc": 0.8830999732017517,
+    "std": 0.0
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "clip_zeroshot_ens__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 0,
+    "n_seeds": 1,
+    "acc": 0.887499988079071,
+    "std": 0.0
+  }
+]
