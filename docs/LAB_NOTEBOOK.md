@@ -76,11 +76,21 @@ Synthetic test suite re-run after all fixes: **all passed** (identical results, 
 
 ## 2026-07-17 — Full runs, figures, notebook, report
 
-**Full experiment grid** (600 episodes / 10 seeds) ran clean off cached embeddings in a few minutes. Headlines: zero-shot CLIP dominates natural-image episodic tasks (CIFAR-10 93.4%, Mini-ImageNet 99.1%) but collapses on MNIST (48–60%); linear probe beats prototype everywhere with paired gaps +8.59±0.41 (MNIST 5w5s) → +0.56±0.13 (Mini-ImageNet); prompt ensemble *hurts* MNIST; ResNet-50's 97.4% 1-shot Mini-ImageNet flagged as ImageNet-label-overlap, not few-shot skill; its 18.7-pt cosine-vs-Euclidean gap at K=1 supports cosine-primary.
+**Full experiment grid** (600 episodes / 10 seeds) ran clean off cached embeddings in a few minutes. Headlines: zero-shot CLIP beats every CLIP-embedding head on natural-image episodic tasks (CIFAR-10 93.2% 5-shot / 93.4% 1-shot, Mini-ImageNet 99.1%; only label-contaminated ResNet-50 prototypes nominally exceed it) but collapses on MNIST (48–60%); linear probe beats prototype at every dataset × K — gap grows with K on MNIST (+3.40→+8.59) and shrinks on CIFAR-10/Mini-ImageNet (+3.94→+1.66, +2.26→+0.56, paired CIs); prompt ensemble *hurts* MNIST; ResNet-50's 97.4% 1-shot Mini-ImageNet flagged as ImageNet-label-overlap, not few-shot skill; its 18.7-pt cosine-vs-Euclidean gap at K=1 supports cosine-primary.
 
 **repro_check: PASSED** — 100/100 table rows re-derived exactly from raw per-episode/per-seed artifacts.
 
 **All 19 figures regenerated** from full results (t-SNE glyph fix included). **Presentation notebook** built from nb_sections (17 cells) and executed end-to-end via nbconvert without error. **Report** §3 (results tables, generated programmatically from the CSVs — no manual transcription) and §4 (discussion) filled in.
+
+## 2026-07-17 — Adversarial review (critical-reviewer) + final corrections
+
+Final adversarial pass over all deliverables. **Numeric pipeline verified watertight**: all 100 CSV rows and 96 report table cells matched independent recomputation from raw artifacts (atol 1e-9); paired diffs, the 18.7-pt gap, ensemble deltas and zero-shot numbers reproduced exactly; all episode files re-verified leakage-free (zero support∩query overlap, correct fingerprints, K-per-class balance); sampler determinism confirmed by regenerating committed episode tensors `torch.equal`; no test-split prototypes; repro_check re-ran green.
+
+**Two discussion overclaims caught and corrected** (wording errors under our own paired-CI standard):
+1. "gap growing in K" was true only for MNIST — CIFAR-10/Mini-ImageNet gaps *shrink* (+3.94→+1.66, +2.26→+0.56); rewritten with 1-shot paired numbers.
+2. "zero-shot beats every support-based head" — falsified by (label-contaminated) ResNet-50 prototypes at 5-shot Mini-ImageNet (99.51 vs 99.10, paired +0.40±0.11); claim scoped to CLIP-embedding heads with the contamination caveat inline.
+
+Minor fixes: 93.4% quote correctly attributed to 1-shot episodes; published-CLIP comparison softened to "consistent with ≈89–90%" with citations; §2.5 note on CPU/GPU float-tie non-bit-exactness (committed arrays are canonical). Notebook s6 discussion aligned with the corrected claims and rebuilt.
 
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
