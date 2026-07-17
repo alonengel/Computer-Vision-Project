@@ -60,6 +60,20 @@ Minor findings also applied: classifier names `proto_cos__clip_vitb32` (no brack
 
 Synthetic test suite re-run after all fixes: **all passed** (identical results, incl. chance control 0.193).
 
+## 2026-07-17 — Features cached, fingerprints stamped, smoke run green
+
+**Extraction complete** (one stall-free resume): 15 feature caches (3 backbones × 5 splits, ~1.6 GB), CLIP text embeddings ×3 datasets, prototypes from **train splits only** (test-split prototype files produced by the pre-fix script deleted per ADR 0003). Note: HF download stalled once mid-extraction earlier in the day; resume-from-cache worked as designed.
+
+**Fingerprints**: all 66 episode/support files stamped with their pool fingerprint (from cache labels, which extraction asserts equal to pool labels) after validating every index in range and every episode label ∈ its episode class set.
+
+**Smoke run (20 episodes / 2 seeds) — all sanity targets hit:**
+- CLIP zero-shot CIFAR-10 all-classes: 88.3 / 88.8 (ens) % — published ≈ 89% ✓
+- CLIP zero-shot MNIST: ~48% — expected weakness, planned discussion point ✓
+- All episodic accuracies ≫ 20% chance; probe > prototype at K=5 on MNIST ✓
+- **Finding for the report:** ResNet-50 prototype hits 96.7% on 1-shot Mini-ImageNet — the R&L test classes are ImageNet-1k classes, so supervised ResNet-50 saw them (labeled) during pretraining. Not few-shot-fair for that backbone; must be flagged in the backbone-comparison discussion.
+
+**t-SNE first look**: CLIP/DINOv2 cluster CIFAR-10 cleanly; ResNet-50 visibly smeared — consistent with the smoke accuracies. (Fixed a missing-glyph ★ in the suptitle.)
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.

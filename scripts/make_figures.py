@@ -42,7 +42,7 @@ def tsne_panels(datasets, n_per_class=150):
                            "class_names": f["class_names"],
                            "proto_xy": xy_all[len(X):]})
         p = embedding_scatter_panels(
-            panels, f"{ds}: t-SNE of frozen test embeddings (★ = class prototype)",
+            panels, f"{ds}: t-SNE of frozen test embeddings (black star = class prototype)",
             f"tsne_{ds}.png")
         print(f"figure: {p}")
 
