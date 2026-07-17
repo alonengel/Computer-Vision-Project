@@ -21,6 +21,10 @@ BACKBONES = ["clip_vitb32", "dinov2_vits14", "resnet50"]
 PRIMARY = "clip_vitb32"
 
 
+BACKBONE_NAMES = {"clip_vitb32": "CLIP ViT-B/32", "dinov2_vits14": "DINOv2 ViT-S/14",
+                  "resnet50": "ResNet-50"}
+
+
 def tsne_panels(datasets, n_per_class=150):
     from sklearn.manifold import TSNE
 
@@ -38,11 +42,14 @@ def tsne_panels(datasets, n_per_class=150):
             proto = np.stack([X[y == c].mean(0) for c in np.unique(y)])
             xy_all = TSNE(n_components=2, random_state=0, init="pca",
                           perplexity=30).fit_transform(np.vstack([X, proto]))
-            panels.append({"title": bb, "xy": xy_all[:len(X)], "labels": y,
+            panels.append({"title": BACKBONE_NAMES[bb], "xy": xy_all[:len(X)], "labels": y,
                            "class_names": f["class_names"],
                            "proto_xy": xy_all[len(X):]})
+        from src.visualize import dataset_label
+
+        note = " (colors recycle across the 20 classes)" if ds == "mini_imagenet" else ""
         p = embedding_scatter_panels(
-            panels, f"{ds}: t-SNE of frozen test embeddings (black star = class prototype)",
+            panels, f"{dataset_label(ds)}: t-SNE of frozen test embeddings{note}",
             f"tsne_{ds}.png")
         print(f"figure: {p}")
 
@@ -84,8 +91,11 @@ def confusion_and_failures():
         clf = PrototypeClassifier("cosine")
         acc, pred, true = run_simple(train_f, test_f, support, clf)
         cm = confusion_matrix(true, pred)
+        from src.visualize import dataset_label
+
         print("figure:", confusion(cm, test_f["class_names"],
-                                   f"{ds}: prototype (cosine), 10-shot — acc {100 * acc:.1f}%",
+                                   f"{dataset_label(ds)}: prototype (cosine), 10-shot, "
+                                   f"seed 0 — acc {100 * acc:.1f}%",
                                    f"confusion_{ds}_proto10s.png"))
         # Hardest misclassifications = largest (predicted - true) score margin.
         device = get_device()
@@ -95,12 +105,23 @@ def confusion_and_failures():
         scores = clf.predict(Xs, ys, Xq).squeeze(0).cpu().numpy()
         wrong = np.flatnonzero(pred != true)
         margin = scores[wrong, pred[wrong]] - scores[wrong, true[wrong]]
-        pick = wrong[np.argsort(-margin)[:12]]
+        order = wrong[np.argsort(-margin)]
+        # Top-confidence error per (true, pred) pair first — shows distinct failure
+        # modes rather than 12 copies of the single worst one; fill up by margin.
+        pick, seen_pairs = [], set()
+        for i in order:
+            pair = (int(true[i]), int(pred[i]))
+            if pair not in seen_pairs:
+                seen_pairs.add(pair)
+                pick.append(i)
+        pick.extend(i for i in order if i not in pick)
+        pick = pick[:12]
         pool = load_pool(ds, "test")
         items = [(pool.get_image(int(i)), test_f["class_names"][int(true[i])],
                   test_f["class_names"][int(pred[i])]) for i in pick]
         print("figure:", failure_gallery(
-            items, f"{ds}: prototype 10-shot — most confident misclassifications",
+            items, f"{dataset_label(ds)}: prototype 10-shot — most confident "
+                   f"misclassification per (true, predicted) pair",
             f"failures_{ds}.png"))
 
 
@@ -113,13 +134,18 @@ def clip_zeroshot_panel():
         Xq = test_f["features"].unsqueeze(0)
         probs = (100.0 * clf.predict(None, None, Xq)).softmax(-1).squeeze(0).numpy()
         pool = load_pool(ds, "test")
-        rng = np.random.default_rng(1)
-        pick = rng.choice(len(pool), size=5, replace=False)
+        # Lowest top-1-vs-top-2 margin = the most uncertain predictions; saturated
+        # 100%-correct examples carry no information.
+        top2 = np.sort(probs, axis=1)[:, -2:]
+        pick = np.argsort(top2[:, 1] - top2[:, 0])[:5]
         images = [pool.get_image(int(i)) for i in pick]
         true_names = [test_f["class_names"][int(test_f["labels"][i])] for i in pick]
+        from src.visualize import dataset_label
+
         print("figure:", clip_qualitative(images, true_names, probs[pick],
                                           test_f["class_names"],
-                                          f"{ds}: CLIP zero-shot predictions (prompt ensemble)",
+                                          f"{dataset_label(ds)}: least confident CLIP "
+                                          f"zero-shot predictions (prompt ensemble)",
                                           f"clip_zeroshot_{ds}.png"))
 
 

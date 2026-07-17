@@ -92,6 +92,15 @@ Final adversarial pass over all deliverables. **Numeric pipeline verified watert
 
 Minor fixes: 93.4% quote correctly attributed to 1-shot episodes; published-CLIP comparison softened to "consistent with ≈89–90%" with citations; §2.5 note on CPU/GPU float-tie non-bit-exactness (committed arrays are canonical). Notebook s6 discussion aligned with the corrected claims and rebuilt.
 
+## 2026-07-17 — Presentation-quality review (cv-expert) + polish pass; pushed to GitHub
+
+Ran the deferred cv-expert *presentation* review (all 19 figures inspected visually, report prose, notebook narrative). Verdict: minor revision. Applied in full:
+- **Figures**: global method→(display name, color, marker, linestyle) map in `src/visualize.py` — raw pipeline IDs (`proto_cos__clip_vitb32`) no longer appear in any figure text; legends moved outside the axes; colors now consistent across every figure; CVD-safe via marker/linestyle/hatch differentiation; dataset display names (MNIST, not `mnist`) everywhere; confusion titles note "seed 0" + colorbar label; CLIP zero-shot panels now show *least confident* predictions with a labeled probability axis; failure galleries show top-confidence error per (true, pred) pair; t-SNE legend rebuilt with proxy handles (normal-size star) centered under panels.
+- **Report**: added Abstract, Author line, References; figures embedded as numbered Figures 1–9 with takeaway captions and cited by number; per-column best bolded († = ImageNet-contaminated ResNet-50 Mini-ImageNet entries); paired-differences table added to §4 (1-shot values verified against raw arrays: MNIST +3.40±0.29, CIFAR-10 +3.94±0.34, Mini-ImageNet +2.26±0.30); §2.4b renumbered to §2.5; grammar/register fixes.
+- **Notebook**: display-name mapping applied to result tables; one-line "what to look at" narrative cells added before each figure block (now 20 cells); rebuilt and executed end-to-end.
+
+Also this session: margin-based hardest-failure selection implemented (was first-12); HF_TOKEN configured (user-level env var); repo pushed to private GitHub `alonengel/Computer-Vision-Project`.
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.
