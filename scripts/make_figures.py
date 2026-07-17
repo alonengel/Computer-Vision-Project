@@ -74,24 +74,34 @@ def confusion_and_failures():
     from src.data import simple_path
     from src.evaluation import run_simple
 
+    from src.utils import get_device
+
     cfg = load_config()
     for ds in ("mnist", "cifar10"):
         train_f = load_features(ds, "train", PRIMARY)
         test_f = load_features(ds, "test", PRIMARY)
         support = torch.load(simple_path(ds, 10, cfg["simple"]["seeds"][0]), weights_only=True)
-        acc, pred, true = run_simple(train_f, test_f, support, PrototypeClassifier("cosine"))
+        clf = PrototypeClassifier("cosine")
+        acc, pred, true = run_simple(train_f, test_f, support, clf)
         cm = confusion_matrix(true, pred)
         print("figure:", confusion(cm, test_f["class_names"],
                                    f"{ds}: prototype (cosine), 10-shot — acc {100 * acc:.1f}%",
                                    f"confusion_{ds}_proto10s.png"))
-        pool = load_pool(ds, "test")
+        # Hardest misclassifications = largest (predicted - true) score margin.
+        device = get_device()
+        Xs = train_f["features"][support["support_idx"]].unsqueeze(0).to(device)
+        ys = train_f["labels"][support["support_idx"]].unsqueeze(0).long().to(device)
+        Xq = test_f["features"].unsqueeze(0).to(device)
+        scores = clf.predict(Xs, ys, Xq).squeeze(0).cpu().numpy()
         wrong = np.flatnonzero(pred != true)
-        scores = None  # margin-based hardest: use distance of top prediction
-        pick = wrong[:12]
+        margin = scores[wrong, pred[wrong]] - scores[wrong, true[wrong]]
+        pick = wrong[np.argsort(-margin)[:12]]
+        pool = load_pool(ds, "test")
         items = [(pool.get_image(int(i)), test_f["class_names"][int(true[i])],
                   test_f["class_names"][int(pred[i])]) for i in pick]
-        print("figure:", failure_gallery(items, f"{ds}: prototype 10-shot misclassifications",
-                                         f"failures_{ds}.png"))
+        print("figure:", failure_gallery(
+            items, f"{ds}: prototype 10-shot — most confident misclassifications",
+            f"failures_{ds}.png"))
 
 
 def clip_zeroshot_panel():
