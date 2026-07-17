@@ -22,7 +22,7 @@ display(Image(str(REPO / "results" / "figures" / "bars_episodic_5shot.png"), wid
 display(Image(str(REPO / "results" / "figures" / "bars_backbones.png"), width=880))
 """),
     ("markdown", """
-**Accuracy vs. shots:** watch the gap between the linear probe (green) and the prototype heads — it widens with K on MNIST but closes on CIFAR-10/Mini-ImageNet, where class means are already near-optimal at K=5.
+**Accuracy vs. shots:** compare each backbone's linear probe (diamond markers) with its own prototype heads (circles/squares, same color). On CLIP the probe leads everywhere; on DINOv2 the prototype leads at K=1 — the probe-vs-prototype ranking is encoder-dependent (§6–7).
 """),
     ("code", """
 for ds in ("mnist", "cifar10", "mini_imagenet"):
@@ -31,11 +31,15 @@ for ds in ("mnist", "cifar10", "mini_imagenet"):
     ("markdown", "## 5b · Results — simple all-classes protocol (mean ± std, 10 seeds)"),
     ("code", """
 si = pd.read_csv(REPO / "results" / "metrics" / "simple.csv")
+# Zero-shot CLIP is deterministic (no support sampling), so no std is reported
+# for it — displaying "± 0.00" would misleadingly suggest a seed sweep.
 si["accuracy"] = (100 * si["acc"]).round(2).astype(str) + " ± " + (100 * si["std"]).round(2).astype(str)
+si.loc[si["k_shot"] == 0, "accuracy"] = (100 * si.loc[si["k_shot"] == 0, "acc"]).round(2).astype(str)
 si["method"] = si["classifier"].map(method_label)
 for ds in ("mnist", "cifar10"):
     t = si[si["dataset"] == ds].pivot(index="method", columns="k_shot", values="accuracy")
-    print(f"\\n=== {ds} (all classes, full test set; k_shot=0 = zero-shot) ===")
+    print(f"\\n=== {ds} (all classes, full test set; k_shot=0 = zero-shot, "
+          f"deterministic -> no std) ===")
     display(t)
 for ds in ("mnist", "cifar10"):
     display(Image(str(REPO / "results" / "figures" / f"acc_vs_k_simple_{ds}.png"), width=820))

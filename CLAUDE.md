@@ -37,6 +37,7 @@ Stage 1 (baselines) is complete; Stage 2 (Flow Matching as final layer) is next.
 - Reports follow formal academic structure (abstract, numbered sections, numbered+captioned embedded figures, references). Number-bearing tables are generated programmatically from the CSVs, not typed by hand.
 - Non-obvious decisions get a short ADR in `docs/adr/`.
 - The presentation notebook is built from `notebooks/nb_sections/s*.py` via `build_notebook.py` — edit sections, never the .ipynb directly.
+- **The notebook must be self-contained.** Reviewers (professor, teammates, external LLMs) often see *only* the executed notebook — no `src/`, no `results/`, no report. Any evidence, policy, or claim that affects grading must therefore appear in the notebook itself: protocol-integrity rules (ADR summaries), hyperparameter provenance, paired statistical comparisons, equivalence benchmarks, and every caveat attached to a reported number. If a review finds a "gap" that is already solved elsewhere in the repo, that is a notebook packaging bug — fix the notebook.
 
 ## Workflow
 

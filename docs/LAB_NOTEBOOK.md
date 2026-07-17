@@ -115,6 +115,14 @@ speedup 373–455x | grid total: 9.1 min sequential -> 1.3 s batched
 
 Cause of the gap: kernel-launch overhead — 180,000 microscopic GPU steps (sequential) vs 300 steps on [600, C, 512] tensors (batched). Documented as §6 engineering benchmark + Figure 10 in the report; results in `results/metrics/bench_probe.json`.
 
+## 2026-07-17 — Teammate LLM-review response: probe × backbone grid + self-contained notebook
+
+A co-member's LLM review of the notebook (`_docs/feedbackImprove.txt`, 8.5/10) was triaged: 5 relevant improvements, 4 points already solved in the repo but invisible in the notebook (the review saw *only* the notebook — packaging lesson), 1 hallucination ("Stage 4"). New CLAUDE.md rule: **the presentation notebook must be self-contained** — evidence living only in src/results/report doesn't exist for reviewers.
+
+**The substantive fix — linear probe on all three backbones** (episodic + simple; grid now 11 heads). This overturned our headline claim: the probe beats the prototype **only on CLIP embeddings**. Paired per-episode CIs: DINOv2 → prototype wins 5/6 settings (e.g. CIFAR-10 1-shot −4.58±0.41; probe recovers only MNIST 5-shot +4.57±0.41); ResNet-50 split (MNIST pro-probe, CIFAR/Mini pro-prototype). Interpretation: fixed a-priori probe budget (lr 0.01/300 steps) is matched to CLIP's normalized 512-d features; at K=1 the probe overfits single examples. Report §4 rewritten with the full 3×6 paired table; abstract scoped accordingly. The reviewer's concern was validated *harder* by the data than it claimed.
+
+**Also applied:** zero-shot CLIP reframed as a *semantic reference baseline* (class names + pretrained alignment ≠ labeled support images); Mini-ImageNet caveat extended to CLIP/DINOv2 ("frozen foundation-model embeddings" setting, not comparable to traditional FSL literature); t-SNE demoted to qualitative with new quantitative backing (`scripts/embedding_metrics.py`: cosine silhouette / 1-NN / within-between ratio → `embedding_quality.csv`, table in notebook §3 — backbone ranking matches classifier ranking); zero-shot "± 0.00" removed from the simple table (deterministic, no support sampling — note added); new notebook §6 "Protocol integrity & provenance" (ADR 0003 incl. the c_k support-only formula, hyperparameter provenance incl. init/wd/seed/reduction, live-computed paired-diff table, query-label hygiene). Notebook now 26 cells, 8 sections, executes end-to-end. repro_check green (124 rows).
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.

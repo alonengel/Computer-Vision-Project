@@ -22,6 +22,8 @@ METHOD_STYLES = {
     "proto_cos__clip_vitb32":       ("Prototype (cos), CLIP",      "#0173B2", "o", "-"),
     "proto_eucl__clip_vitb32":      ("Prototype (eucl), CLIP",     "#0173B2", "s", "--"),
     "linear__clip_vitb32":          ("Linear probe, CLIP",         "#029E73", "D", "-"),
+    "linear__dinov2_vits14":        ("Linear probe, DINOv2",       "#CC78BC", "D", "-."),
+    "linear__resnet50":             ("Linear probe, ResNet-50",    "#ECE133", "D", "-."),
     "clip_zeroshot__clip_vitb32":   ("Zero-shot CLIP (1 prompt)",  "#D55E00", "^", "-"),
     "clip_zeroshot_ens__clip_vitb32": ("Zero-shot CLIP (ensemble)", "#D55E00", "v", "--"),
     "proto_cos__dinov2_vits14":     ("Prototype (cos), DINOv2",    "#CC78BC", "o", "-"),
@@ -145,10 +147,10 @@ def grouped_bars(df, title, name):
     for i, clf in enumerate(classifiers):
         g = df[df["classifier"] == clf].set_index("dataset").reindex(datasets)
         label, color, _, ls = METHOD_STYLES[clf]
+        hatch = {"--": "//", "-.": "xx"}.get(ls)
         ax.bar(x + (i - (len(classifiers) - 1) / 2) * w, 100 * g["acc"], w,
                yerr=100 * g["err"], capsize=4, label=label, color=color,
-               edgecolor="white", linewidth=0.5,
-               hatch="//" if ls == "--" else None)
+               edgecolor="white", linewidth=0.5, hatch=hatch)
     ax.set_xticks(x); ax.set_xticklabels([dataset_label(d) for d in datasets])
     ax.set_ylabel("accuracy (%)")
     ax.set_title(title)

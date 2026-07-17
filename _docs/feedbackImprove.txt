@@ -1,0 +1,241 @@
+# Stage 1 Review
+
+Overall, Stage 1 looks excellent and highly professional. It implements almost exactly the experimental plan we defined and presents considerably more evidence than a typical baseline stage.
+
+I would currently rate it 8.5 out of 10. A few methodological points should be addressed before moving to Stage 2.
+
+## What Was Done Well
+
+1. The three appropriate baselines were implemented:
+
+   1. Prototype classification
+
+   2. A PyTorch linear classifier
+
+   3. Zero Shot CLIP
+
+2. Both Episodic Evaluation and Simple K Shot Evaluation are included.
+
+3. All methods use the same fixed Episodes. This provides a fair and reproducible comparison.
+
+4. The encoders are frozen, so differences in performance can be attributed to the classification methods rather than changes in the feature extractors.
+
+5. The Episodic Evaluation uses 600 Episodes and reports a 95 percent confidence interval.
+
+6. Multiple backbones are evaluated, including CLIP, DINOv2, and ResNet.
+
+7. The notebook contains both quantitative and qualitative analysis, including:
+
+   1. Accuracy tables
+
+   2. Accuracy versus number of shots
+
+   3. Confusion matrices
+
+   4. Failure examples
+
+   5. t SNE visualizations
+
+8. The notebook prepares the embeddings, Episodes, prototypes, and text embeddings that will be required by Stage 2 and Stage 3.
+
+9. The notebook was executed sequentially and contains no stored execution errors.
+
+## Important Changes
+
+### 1. The Linear Probe Conclusion Is Too Broad
+
+The notebook states that the Linear Probe outperforms the Prototype classifier for every dataset and every value of \(K\).
+
+However, the Linear Probe was evaluated only with CLIP embeddings, while the Prototype classifier was evaluated with CLIP, DINOv2, and ResNet embeddings.
+
+There are two possible solutions:
+
+1. Add a Linear Probe for DINOv2 and ResNet embeddings.
+
+2. Restrict the conclusion to CLIP embeddings.
+
+The first option is recommended because it provides a clean separation between the effect of the encoder and the effect of the classifier.
+
+The revised conclusion could be:
+
+> Using CLIP embeddings, the trained Linear Probe outperforms the Prototype classifier for every evaluated dataset and value of K.
+
+### 2. Zero Shot CLIP Uses Different Information
+
+The Prototype classifier and Linear Probe receive labeled Support images.
+
+Zero Shot CLIP does not receive Support images, but it receives class names and uses semantic knowledge acquired during CLIP pretraining.
+
+Therefore, Zero Shot CLIP is an important baseline, but it does not use the same information as the Few Shot methods.
+
+It should be described as:
+
+> A semantic reference baseline based on class names and pretrained image text alignment.
+
+The report should explicitly state that Zero Shot CLIP uses semantic class information, while the other classifiers rely on labeled Support examples.
+
+### 3. Mini ImageNet Results Are Extremely High
+
+Accuracy values close to 99 percent on Mini ImageNet are not necessarily incorrect. However, they should not be interpreted as results from the traditional Few Shot setting.
+
+CLIP, DINOv2, and ResNet were pretrained on very large image collections. Their pretraining data may contain images or semantic categories that are very similar to the Mini ImageNet test classes.
+
+The notebook already mentions this issue for ResNet. The same general caveat should also be discussed for CLIP and DINOv2.
+
+The experimental setting should be described as:
+
+> Few Shot classification using frozen pretrained foundation model embeddings.
+
+The results should not be compared directly with traditional Few Shot literature without clearly explaining the difference in pretrained knowledge.
+
+### 4. Prevent Information Leakage in Stage 2
+
+This is the most important issue before implementing Stage 2.
+
+For every Episode, each class prototype must be calculated only from the Support Set:
+
+\[
+c_k =
+\frac{1}{K}
+\sum_{x \in S_k} f(x)
+\]
+
+Query images must never be used to calculate the class prototypes.
+
+If the saved files named `prototypes_*.pt` contain prototypes calculated from an entire dataset split, they must not be used as target prototypes during Episodic Evaluation.
+
+Stage 2 should either calculate or load a separate prototype for every class in every Episode using only the corresponding Support embeddings.
+
+The Query labels must remain completely hidden until the final accuracy calculation.
+
+### 5. Explain How Linear Probe Hyperparameters Were Selected
+
+The Linear Probe currently uses:
+
+```python
+Adam
+300 training steps
+learning rate 0.01
+
+The notebook should explain how these values were selected.
+
+They must not be selected according to performance on the Mini ImageNet test classes.
+
+Hyperparameter selection should use validation data only.
+
+The following details should also be documented:
+
+Weight initialization
+Weight decay
+Random seed
+Batch construction
+Loss reduction
+Whether the same configuration is used for every dataset and value of K
+6. Add Paired Statistical Comparisons
+
+All methods use the same fixed Episodes. This allows a stronger paired statistical comparison.
+
+For every Episode, calculate the accuracy difference between two methods. Then report the mean difference and its 95 percent confidence interval.
+
+For example:
+
+Linear Probe compared with CLIP Prototype:
+Mean accuracy improvement: 3.42 percentage points
+95 percent confidence interval: [2.91, 3.93]
+
+This is more informative than presenting an independent confidence interval for each method.
+
+It directly measures whether one method consistently outperforms another on the same Episodes.
+
+7. Treat t SNE as a Qualitative Visualization
+
+The notebook currently suggests that class separation in the t SNE plots predicts Few Shot performance.
+
+However, t SNE can distort distances and neighborhood structures. It should not be treated as quantitative evidence.
+
+A safer description is:
+
+The t SNE plots provide a qualitative visualization of the frozen embedding spaces. Their visual class separation is generally consistent with the quantitative classification results.
+
+If a quantitative measurement of embedding quality is required, consider adding:
+
+Silhouette score
+Nearest neighbor accuracy
+Average distance within each class
+Average distance between different classes
+Ratio between within class and between class distances
+8. Improve the Zero Shot Result Presentation
+
+In the Simple Evaluation table, Zero Shot CLIP is displayed with a standard deviation of zero:
+
+48.25 ± 0.0
+
+Zero Shot CLIP is deterministic and does not use randomly sampled Support Sets. Therefore, it was not meaningfully evaluated across the 10 Support seeds.
+
+It would be clearer to display:
+
+48.25
+
+The table should include a note explaining that no standard deviation is reported because Zero Shot CLIP does not depend on Support sampling.
+
+9. Clarify the Batched Linear Probe Statement
+
+The notebook states that training all 600 linear classifiers as one batched tensor is mathematically identical to training 600 independent classifiers.
+
+This is mostly correct if every Episode has independent parameters and optimizer states.
+
+However, exact equivalence can depend on:
+
+Loss scaling
+Optimizer epsilon
+Gradient reduction
+Initialization
+Regularization
+
+A safer description is:
+
+The batched implementation is equivalent to training independent linear classifiers up to shared loss scaling and minor numerical effects.
+
+10. Clarify the Meaning of End to End Training
+
+Stage 3 is described as end to end training.
+
+However, encoder fine tuning belongs to Stage 4 in the original project plan.
+
+Therefore, Stage 3 should clarify that end to end training refers only to the Flow Matching module and the linear classifier:
+
+Frozen Encoder→Flow Matching→Linear Classifier
+
+The encoder should remain frozen during Stage 3 unless the project plan is intentionally changed.
+
+Recommended Experimental Protocol
+
+The following paragraph should be added before Stage 2:
+
+All learned hyperparameters are selected using validation data only. For Mini ImageNet, trainable modules are trained on the 64 training classes, tuned on the 16 validation classes, and evaluated on the 20 test classes. During episodic adaptation, only Support labels are used, while Query labels are reserved strictly for evaluation. Every method is evaluated using the same fixed Episode files.
+
+For MNIST and CIFAR, the protocol should state that:
+
+Support examples are drawn from the training split.
+Final evaluation is performed on the test split.
+Test labels are used only to calculate final metrics.
+Query images are never used during training or prototype construction.
+Recommended Changes Before Stage 2
+
+The following changes have the highest priority:
+
+Add Linear Probes for DINOv2 and ResNet, or restrict the Linear Probe conclusion to CLIP embeddings.
+Describe Zero Shot CLIP as a semantic reference baseline rather than a directly equivalent Few Shot method.
+Ensure that every episodic prototype is calculated only from the Support Set of that Episode.
+Document that hyperparameters are selected using validation data rather than test data.
+Define exactly how the Flow Matching model will be trained without accessing Query labels.
+Keep the encoder frozen during Stage 2 and Stage 3.
+Final Assessment
+
+Stage 1 is strong enough to proceed to Stage 2.
+
+The experimental structure is clear, reproducible, and well presented. The use of fixed Episodes, frozen encoders, several baselines, confidence intervals, and qualitative failure analysis provides a solid foundation for evaluating Flow Matching.
+
+The most important remaining task is to define a strict separation between training, validation, Support, and Query data before implementing Stage 2. This will ensure that any improvement produced by Flow Matching represents genuine generalization rather than information leakage.
+
+The attached file contains the presentation notebook and its stored results, but it does not include the src and results directories. Therefore, this review validates the experimental design, reported outputs, and presentation structure, but it does not independently verify the internal implementations of Episode construction, prototype calculation, or classifier training.

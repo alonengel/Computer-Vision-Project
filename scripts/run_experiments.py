@@ -36,12 +36,16 @@ def load_text(dataset):
 
 
 def support_classifiers():
-    """(name, backbone, classifier) — heads that use the support set."""
+    """(name, backbone, classifier) — heads that use the support set.
+
+    Prototype AND linear probe on every backbone: the full head × encoder grid
+    cleanly separates encoder effects from classifier effects.
+    """
     grid = []
     for bb in BACKBONE_GRID:
         grid.append((f"proto_cos__{bb}", bb, PrototypeClassifier("cosine")))
         grid.append((f"proto_eucl__{bb}", bb, PrototypeClassifier("euclidean")))
-    grid.append((f"linear__{PRIMARY}", PRIMARY, LinearProbe()))
+        grid.append((f"linear__{bb}", bb, LinearProbe()))
     return grid
 
 

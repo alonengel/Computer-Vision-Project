@@ -9,7 +9,11 @@ sys.path.insert(0, str(REPO))
 
 import json
 
+import pandas as pd
+
 from src.utils import load_config
+
+pd.set_option("display.precision", 2)
 
 with open(REPO / "results" / "runtime_summary.json") as f:
     runtime = json.load(f)
