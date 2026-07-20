@@ -1,12 +1,14 @@
 # Few-Shot Classification with Flow Matching
 
-Course project in four stages (see [_docs/bigPicture.txt](_docs/bigPicture.txt)):
+Course project in three stages (see [_docs/bigPicture.txt](_docs/bigPicture.txt)):
 
-1. **Stage 1 (this repo state)** — Few-shot classification baselines on MNIST, CIFAR-10 and Mini-ImageNet using frozen pretrained embeddings: prototype classifier, `nn.Linear` probe (CrossEntropyLoss), and zero-shot CLIP.
-2. **Stage 2** — Flow Matching as the final decision layer (embedding → class prototype / CLIP text embedding transport).
-3. **Stage 3** — Flow Matching between the frozen encoder and the linear classifier, trained end-to-end.
+1. **Stage 1 (complete)** — Few-shot classification baselines on MNIST, CIFAR-10 and Mini-ImageNet over frozen pretrained embeddings (CLIP ViT-B/32, DINOv2 ViT-S/14, ResNet-50): prototype classifier (cosine/Euclidean + a multi-prototype k-means ablation), linear probe (CrossEntropyLoss), and zero-shot CLIP as a semantic reference baseline — every head evaluated on every backbone.
+2. **Stage 2** — Flow Matching as the final decision layer (embedding → per-episode support prototype / CLIP text embedding transport, ADR 0003).
+3. **Stage 3** — Flow Matching between the frozen encoder and the linear classifier, trained jointly with CE (encoder stays frozen).
 
-Stage 1 deliberately produces **reusable artifacts** — cached embeddings, class prototypes, CLIP text embeddings, and fixed episode index files — so later stages compare against identical support/query sets.
+Stage 1 produces **reusable artifacts** so later stages compare against identical support/query sets: cached embeddings, fixed episode index files (fingerprint-verified), train-split prototypes, CLIP text embeddings, and — crucially — [results/artifacts/best_baselines.json](results/artifacts/best_baselines.json): the **final embedding selection** per (dataset, classifier head), chosen on *validation* episodes only (Mini-ImageNet R&L val classes / train-split episodes), one configuration across all K, ties to the smaller embedding. A Stage-2/3 variant of a head counts as an improvement only if it beats *that* configuration, paired on the same test episodes.
+
+Binding project rules (environment, integrity, statistics, review gates) live in [CLAUDE.md](CLAUDE.md).
 
 ## Environment
 
@@ -29,6 +31,8 @@ C:\Users\Alon\Desktop\cv-ex2\rocm_win312\Scripts\python.exe
 .\tasks.ps1 check     # repro check: re-derive headline numbers from saved artifacts
 ```
 
+Additional scripts (run with the venv interpreter): `scripts/select_baselines.py` (validation-based embedding selection → `best_baselines.json`), `scripts/embedding_metrics.py` (quantitative embedding quality), `scripts/bench_probe.py` (batched-vs-sequential probe equivalence benchmark), `scripts/make_architecture_figs.py` (architecture diagrams).
+
 ## Repository layout
 
 | Path | Purpose |
@@ -41,7 +45,7 @@ C:\Users\Alon\Desktop\cv-ex2\rocm_win312\Scripts\python.exe
 | [docs/REPORT_STAGE1.md](docs/REPORT_STAGE1.md) | Formal Stage 1 report |
 | [docs/adr/](docs/adr/) | Short decision records |
 | results/features/ | Cached embeddings (gitignored, reproducible via `extract`) |
-| [results/artifacts/](results/artifacts/) | Prototypes, CLIP text embeddings, episode indices (stage 2/3 inputs) |
+| [results/artifacts/](results/artifacts/) | Episode indices, train-split prototypes, CLIP text embeddings, `best_baselines.json` (Stage 2/3 inputs) |
 | [results/metrics/](results/metrics/), [results/figures/](results/figures/) | Committed experiment outputs |
 
 ## Evaluation protocols

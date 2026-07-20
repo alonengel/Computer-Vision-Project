@@ -205,9 +205,16 @@ def episode_grids():
 
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
+    def arch():
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import make_architecture_figs as af
+
+        af.baselines(); af.stage2_advised()
+
     steps = {"grids": episode_grids, "tsne": lambda: tsne_panels(["mnist", "cifar10", "mini_imagenet"]),
              "curves": result_curves, "kmeans": kmeans_ncenters,
-             "confusion": confusion_and_failures, "clip": clip_zeroshot_panel}
+             "confusion": confusion_and_failures, "clip": clip_zeroshot_panel,
+             "arch": arch}
     for name, fn in steps.items():
         if only and name != only:
             continue
