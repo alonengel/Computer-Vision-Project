@@ -77,6 +77,56 @@ def result_curves():
                                          "5-way 5-shot ± 95% CI", "bars_backbones.png"))
 
 
+def per_head_charts():
+    """Split accuracy charts by classifier: prototype and linear probe as
+    acc-vs-K lines per backbone; zero-shot as prompt-variant bars (no K)."""
+    from src.visualize import head_backbone_curves, zeroshot_variant_bars
+
+    ep = pd.read_csv(metrics_dir() / "episodic.csv")
+    si = pd.read_csv(metrics_dir() / "simple.csv")
+
+    def series(head_prefix):
+        panels = []
+        for ds in ("mnist", "cifar10"):
+            s = {}
+            for bb in BACKBONES:
+                g = si[(si["dataset"] == ds) & (si["classifier"] == f"{head_prefix}__{bb}")
+                       & (si["k_shot"] > 0)].sort_values("k_shot")
+                s[bb] = (g["k_shot"].tolist(), g["acc"].tolist(), g["std"].tolist())
+            panels.append({"dataset": ds, "protocol_label": "all classes, ± std over 10 seeds",
+                           "series": s})
+        s = {}
+        for bb in BACKBONES:
+            g = ep[(ep["dataset"] == "mini_imagenet")
+                   & (ep["classifier"] == f"{head_prefix}__{bb}")].sort_values("k_shot")
+            s[bb] = (g["k_shot"].tolist(), g["acc"].tolist(), g["ci95"].tolist())
+        panels.append({"dataset": "mini_imagenet",
+                       "protocol_label": "5-way episodes, ± 95% CI; ResNet-50 †contaminated",
+                       "series": s})
+        return panels
+
+    print("figure:", head_backbone_curves(
+        series("proto_cos"),
+        "Prototype classifier (cosine): accuracy vs support size, per embedding",
+        "acc_prototype_backbones.png"))
+    print("figure:", head_backbone_curves(
+        series("linear"),
+        "Linear probe: accuracy vs support size, per embedding",
+        "acc_linear_backbones.png"))
+
+    entries = []
+    for ds in ("mnist", "cifar10"):
+        g = si[(si["dataset"] == ds) & (si["k_shot"] == 0)].set_index("classifier")
+        entries.append({"dataset": ds, "protocol_label": "all 10 classes",
+                        "single": g.loc["clip_zeroshot__clip_vitb32", "acc"],
+                        "ensemble": g.loc["clip_zeroshot_ens__clip_vitb32", "acc"]})
+    g = ep[(ep["dataset"] == "mini_imagenet") & (ep["k_shot"] == 5)].set_index("classifier")
+    entries.append({"dataset": "mini_imagenet", "protocol_label": "5-way episodes",
+                    "single": g.loc["clip_zeroshot__clip_vitb32", "acc"],
+                    "ensemble": g.loc["clip_zeroshot_ens__clip_vitb32", "acc"]})
+    print("figure:", zeroshot_variant_bars(entries, "zeroshot_variants.png"))
+
+
 def kmeans_ncenters():
     """n_centers ∈ {1,2,3} multi-prototype comparison, episodic 5-shot, on each
     dataset's selected prototype backbone (n=1 = the plain cosine prototype)."""
@@ -212,7 +262,7 @@ def main():
         af.baselines(); af.stage2_advised()
 
     steps = {"grids": episode_grids, "tsne": lambda: tsne_panels(["mnist", "cifar10", "mini_imagenet"]),
-             "curves": result_curves, "kmeans": kmeans_ncenters,
+             "curves": result_curves, "byhead": per_head_charts, "kmeans": kmeans_ncenters,
              "confusion": confusion_and_failures, "clip": clip_zeroshot_panel,
              "arch": arch}
     for name, fn in steps.items():

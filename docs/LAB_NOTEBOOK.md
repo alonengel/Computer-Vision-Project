@@ -146,6 +146,10 @@ User-requested extension (matches the original `_docs/K-Mean Prototype.png` sket
 
 **Result — one center is enough at 5-shot, multi-modality pays at K=10:** paired vs the single prototype on each dataset's selected backbone (episodic 5s): MNIST tie (−0.32±0.39, −0.12±0.43), CIFAR-10 significantly worse (−0.94±0.20, −1.64±0.23), Mini-ImageNet marginally worse (−0.10±0.07, −0.16±0.08) — each center gets ~5/n samples, estimation noise dominates. MNIST simple 10-shot: **n=3 wins +1.18±1.08 paired** — digit styles are multi-modal, but need ~3+ shots per center. Stage-2 implication: class-mean targets are right at 5-shot; multi-center targets only at higher K. New `kmeans_ncenters.png` (report Figure 11, others renumbered); ablation heads excluded from main curves for legibility; repro_check green.
 
+## 2026-07-20 — Per-classifier accuracy charts (readability)
+
+User-requested split of the accuracy visualizations by classifier head, replacing the 11-series combined curves as the primary display: `acc_prototype_backbones.png` and `acc_linear_backbones.png` (accuracy vs support size, one line per embedding, panels per dataset with protocol labels — MNIST/CIFAR-10 simple ± std, Mini-ImageNet episodic ± CI with ResNet-50 † noted) and `zeroshot_variants.png` (single prompt vs ensemble per dataset, **no shots axis** — zero-shot uses class names, not support). One fixed color per embedding across every chart (`BACKBONE_COLORS` in `src/visualize.py`); k-means ablation kept in its own chart. Report Figures 5–7 swapped/inserted (others renumbered to 14); combined `acc_vs_k_*` files remain in `results/figures/` as counterparts. Notebook s5 rebuilt around the split charts (34 cells, executed).
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.

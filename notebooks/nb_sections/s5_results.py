@@ -22,11 +22,14 @@ display(Image(str(REPO / "results" / "figures" / "bars_episodic_5shot.png"), wid
 display(Image(str(REPO / "results" / "figures" / "bars_backbones.png"), width=880))
 """),
     ("markdown", """
-**Accuracy vs. shots:** compare each backbone's linear probe (diamond markers) with its own prototype heads (circles/squares, same color). On CLIP the probe leads everywhere; on DINOv2 the prototype leads at K=1 — the probe-vs-prototype ranking is encoder-dependent (§6–7).
+**Accuracy vs. support size, split by classifier** (one line per embedding; colors are consistent across every chart — blue CLIP, pink DINOv2, yellow ResNet-50):
+
+- **Prototype**: backbone ranking is dataset-dependent — near-tied on MNIST, DINOv2 clearly ahead on CIFAR-10; the ResNet-50 Mini-ImageNet lead is label contamination (†).
+- **Linear probe**: CLIP is the strongest probe embedding on MNIST/CIFAR-10 at every K — the fixed a-priori training budget favors its normalized features. Note the probe-vs-prototype ranking is encoder-dependent (§6–7).
 """),
     ("code", """
-for ds in ("mnist", "cifar10", "mini_imagenet"):
-    display(Image(str(REPO / "results" / "figures" / f"acc_vs_k_episodic_{ds}.png"), width=820))
+display(Image(str(REPO / "results" / "figures" / "acc_prototype_backbones.png"), width=940))
+display(Image(str(REPO / "results" / "figures" / "acc_linear_backbones.png"), width=940))
 """),
     ("markdown", "## 5b · Results — simple all-classes protocol (mean ± std, 10 seeds)"),
     ("code", """
@@ -41,8 +44,12 @@ for ds in ("mnist", "cifar10"):
     print(f"\\n=== {ds} (all classes, full test set; k_shot=0 = zero-shot, "
           f"deterministic -> no std) ===")
     display(t)
-for ds in ("mnist", "cifar10"):
-    display(Image(str(REPO / "results" / "figures" / f"acc_vs_k_simple_{ds}.png"), width=820))
+"""),
+    ("markdown", """
+**Zero-shot CLIP by prompt variant** — no shots axis, since zero-shot uses class names rather than support images. The ensemble helps on natural images and *hurts* on MNIST (the generic templates dilute the digit-specific prompt):
+"""),
+    ("code", """
+display(Image(str(REPO / "results" / "figures" / "zeroshot_variants.png"), width=720))
 """),
     ("markdown", """
 ### Multi-prototype ablation: does splitting a class into n k-means centers help?

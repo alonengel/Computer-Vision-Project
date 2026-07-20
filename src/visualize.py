@@ -41,6 +41,58 @@ METHOD_STYLES = {
 # Ablation-only methods excluded from the main accuracy curves/bars for legibility.
 ABLATION_ONLY = tuple(k for k in METHOD_STYLES if k.startswith("kmeans"))
 
+# One fixed color per embedding, used identically in every per-classifier chart.
+BACKBONE_COLORS = {"clip_vitb32": "#0173B2", "dinov2_vits14": "#CC78BC",
+                   "resnet50": "#ECE133"}
+BACKBONE_NAMES = {"clip_vitb32": "CLIP ViT-B/32", "dinov2_vits14": "DINOv2 ViT-S/14",
+                  "resnet50": "ResNet-50"}
+
+
+def head_backbone_curves(panels, suptitle, name):
+    """Per-classifier chart: accuracy vs number of support images, one line per
+    backbone, one panel per dataset. panels: list of dicts with keys
+    'dataset', 'protocol_label', 'series' = {backbone: (ks, accs, errs)}."""
+    fig, axes = plt.subplots(1, len(panels), figsize=(5.4 * len(panels), 4.8))
+    axes = np.atleast_1d(axes)
+    for ax, p in zip(axes, panels):
+        for bb, (ks, accs, errs) in p["series"].items():
+            ax.errorbar(ks, [100 * a for a in accs], yerr=[100 * e for e in errs],
+                        marker="o", capsize=3, linewidth=2.2,
+                        color=BACKBONE_COLORS[bb], label=BACKBONE_NAMES[bb])
+        ax.set_title(f"{dataset_label(p['dataset'])}\n({p['protocol_label']})", fontsize=12)
+        ax.set_xlabel("support images per class (K)")
+        ax.set_xticks(p["series"][next(iter(p["series"]))][0])
+    axes[0].set_ylabel("accuracy (%)")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 0.02),
+               ncol=3, frameon=True, fontsize=11)
+    fig.suptitle(suptitle, y=1.03, fontsize=14)
+    fig.tight_layout()
+    return _save(fig, name)
+
+
+def zeroshot_variant_bars(entries, name):
+    """Zero-shot CLIP: single prompt vs prompt ensemble per dataset. No shots
+    axis — zero-shot uses no support images. entries: list of dicts with
+    'dataset', 'protocol_label', 'single', 'ensemble' (accuracy fractions)."""
+    x = np.arange(len(entries)); w = 0.35
+    fig, ax = plt.subplots(figsize=(8.5, 5.2))
+    ax.bar(x - w / 2, [100 * e["single"] for e in entries], w,
+           label="single prompt", color="#D55E00", edgecolor="white")
+    ax.bar(x + w / 2, [100 * e["ensemble"] for e in entries], w,
+           label="prompt ensemble", color="#D55E00", hatch="//", edgecolor="white")
+    for i, e in enumerate(entries):
+        for dx, v in ((-w / 2, e["single"]), (w / 2, e["ensemble"])):
+            ax.text(i + dx, 100 * v + 0.8, f"{100 * v:.1f}", ha="center", fontsize=10)
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{dataset_label(e['dataset'])}\n({e['protocol_label']})"
+                        for e in entries], fontsize=11)
+    ax.set_ylabel("accuracy (%)"); ax.set_ylim(0, 104)
+    ax.set_title("Zero-shot CLIP: prompt variants per dataset\n"
+                 "(no shots axis — zero-shot uses class names, not support images)")
+    ax.legend(loc="upper left", frameon=True)
+    return _save(fig, name)
+
 
 def method_label(name):
     return METHOD_STYLES.get(name, (name,))[0]
