@@ -8,6 +8,8 @@ All heads share one interface — `predict(Xs, ys, Xq) → scores [B, Q, C]` ove
 
 **Linear probe** — `nn.Linear(dim, C)` + `CrossEntropyLoss`, Adam (300 steps, lr 0.01) on the support set only. Episodic evaluation trains all 600 episode heads jointly as a batched tensor `[600, C, dim]` — provably identical to 600 independent heads and 373–455× faster (benchmark below: same seeded init, identical predictions on all 45,000 queries per config; full probe grid 9.1 min → 1.3 s).
 
+**Multi-prototype (k-means) ablation** — n_centers ∈ {1, 2, 3} spherical k-means centers per class, clustered from that class's **support embeddings only** (query data never enters clustering); queries scored by max cosine similarity over a class's centers. n=1 is exactly the cosine prototype (verified per-episode identical); n ∈ {2,3} run only where K ≥ n_centers.
+
 **Zero-shot CLIP** — a *semantic reference baseline* based on class names and pretrained image–text alignment: cached text embeddings of dataset-specific prompts (e.g. `'a photo of the number: "{}".'` for MNIST), query scored by image–text cosine similarity. Unlike the two heads above it receives **no support images** — its information source is class names + CLIP pretraining, so it is a reference point rather than an equivalent few-shot method. Single-prompt vs. prompt-ensemble reported separately. In episodic mode only the 5 episode classes are scored.
 """),
     ("code", """

@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np
 import torch
 
-from src.classifiers import LinearProbe, PrototypeClassifier, ZeroShotCLIP
+from src.classifiers import (KMeansPrototype, LinearProbe, PrototypeClassifier,
+                             ZeroShotCLIP)
 from src.data import episodic_path, simple_path
 from src.embeddings import clip_text_path, load_features
 from src.evaluation import ci95, run_episodic, run_simple, save_raw, save_table
@@ -46,6 +47,11 @@ def support_classifiers():
         grid.append((f"proto_cos__{bb}", bb, PrototypeClassifier("cosine")))
         grid.append((f"proto_eucl__{bb}", bb, PrototypeClassifier("euclidean")))
         grid.append((f"linear__{bb}", bb, LinearProbe()))
+        # Multi-prototype ablation: n spherical k-means centers per class from
+        # support only. n=1 is exactly proto_cos, so only n in {2,3} are run,
+        # and only where K >= n_centers (else it degenerates to the mean).
+        grid.append((f"kmeans2_cos__{bb}", bb, KMeansPrototype(2)))
+        grid.append((f"kmeans3_cos__{bb}", bb, KMeansPrototype(3)))
     return grid
 
 
@@ -82,6 +88,8 @@ def main(smoke=False):
             grid = ([(n, b, c, False) for n, b, c in support_classifiers()] +
                     [(n, b, c, True) for n, b, c in zeroshot_classifiers(ds)])
             for name, bb, clf, subset_aware in grid:
+                if isinstance(clf, KMeansPrototype) and k < clf.n_centers:
+                    continue  # degenerates to the plain prototype
                 accs = run_episodic(feats[bb], episode, clf, class_subset_aware=subset_aware)
                 save_raw(f"ep{tag}_{ds}_{ep_cfg['n_way']}w{k}s_{name}", accs)
                 episodic_rows.append({
@@ -99,6 +107,8 @@ def main(smoke=False):
         test_f = {bb: load_features(ds, "test", bb) for bb in BACKBONE_GRID}
         for k in si_cfg["shots"]:
             for name, bb, clf in support_classifiers():
+                if isinstance(clf, KMeansPrototype) and k < clf.n_centers:
+                    continue
                 accs = []
                 for seed in seeds:
                     support = torch.load(simple_path(ds, k, seed), weights_only=True)

@@ -30,7 +30,16 @@ METHOD_STYLES = {
     "proto_eucl__dinov2_vits14":    ("Prototype (eucl), DINOv2",   "#CC78BC", "s", "--"),
     "proto_cos__resnet50":          ("Prototype (cos), ResNet-50", "#ECE133", "o", "-"),
     "proto_eucl__resnet50":         ("Prototype (eucl), ResNet-50", "#ECE133", "s", "--"),
+    # Multi-prototype ablation (dedicated figure only — kept out of the curves)
+    "kmeans2_cos__clip_vitb32":     ("2-center k-means, CLIP",      "#0173B2", "P", ":"),
+    "kmeans3_cos__clip_vitb32":     ("3-center k-means, CLIP",      "#0173B2", "X", ":"),
+    "kmeans2_cos__dinov2_vits14":   ("2-center k-means, DINOv2",    "#CC78BC", "P", ":"),
+    "kmeans3_cos__dinov2_vits14":   ("3-center k-means, DINOv2",    "#CC78BC", "X", ":"),
+    "kmeans2_cos__resnet50":        ("2-center k-means, ResNet-50", "#ECE133", "P", ":"),
+    "kmeans3_cos__resnet50":        ("3-center k-means, ResNet-50", "#ECE133", "X", ":"),
 }
+# Ablation-only methods excluded from the main accuracy curves/bars for legibility.
+ABLATION_ONLY = tuple(k for k in METHOD_STYLES if k.startswith("kmeans"))
 
 
 def method_label(name):

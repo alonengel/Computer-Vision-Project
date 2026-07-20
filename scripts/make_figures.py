@@ -55,8 +55,12 @@ def tsne_panels(datasets, n_per_class=150):
 
 
 def result_curves():
+    from src.visualize import ABLATION_ONLY
+
     ep = pd.read_csv(metrics_dir() / "episodic.csv")
     si = pd.read_csv(metrics_dir() / "simple.csv")
+    ep = ep[~ep["classifier"].str.startswith(ABLATION_ONLY)]
+    si = si[~si["classifier"].str.startswith(ABLATION_ONLY)]
     for ds, g in ep.groupby("dataset"):
         d = g.rename(columns={"ci95": "err"})
         print("figure:", accuracy_vs_k(d, ds, name=f"acc_vs_k_episodic_{ds}.png"))
@@ -71,6 +75,47 @@ def result_curves():
     proto = k5[k5["classifier"].str.startswith("proto_cos")]
     print("figure:", grouped_bars(proto, "Backbone comparison — prototype (cosine), "
                                          "5-way 5-shot ± 95% CI", "bars_backbones.png"))
+
+
+def kmeans_ncenters():
+    """n_centers ∈ {1,2,3} multi-prototype comparison, episodic 5-shot, on each
+    dataset's selected prototype backbone (n=1 = the plain cosine prototype)."""
+    import json
+
+    import matplotlib.pyplot as plt
+
+    from src.visualize import DPI, dataset_label, figures_dir
+
+    with open(Path(__file__).resolve().parent.parent / "results" / "artifacts"
+              / "best_baselines.json") as f:
+        best = json.load(f)["selection"]
+    ep = pd.read_csv(metrics_dir() / "episodic.csv")
+    datasets = ["mnist", "cifar10", "mini_imagenet"]
+    fig, ax = plt.subplots(figsize=(9.5, 5.5))
+    import numpy as np
+
+    x = np.arange(len(datasets))
+    w = 0.26
+    colors = {1: "#0173B2", 2: "#CC78BC", 3: "#ECE133"}
+    for i, n in enumerate((1, 2, 3)):
+        vals, errs = [], []
+        for ds in datasets:
+            bb = best[ds]["prototype"]["backbone"]
+            name = f"proto_cos__{bb}" if n == 1 else f"kmeans{n}_cos__{bb}"
+            r = ep[(ep["dataset"] == ds) & (ep["k_shot"] == 5)
+                   & (ep["classifier"] == name)].iloc[0]
+            vals.append(100 * r["acc"]); errs.append(100 * r["ci95"])
+        ax.bar(x + (i - 1) * w, vals, w, yerr=errs, capsize=4,
+               label=f"$n$ = {n}" + (" (= prototype)" if n == 1 else ""),
+               color=colors[n], edgecolor="white")
+    ax.set_xticks(x); ax.set_xticklabels([dataset_label(d) for d in datasets])
+    ax.set_ylabel("accuracy (%)"); ax.set_ylim(bottom=70)
+    ax.set_title("Multi-prototype ablation: $n$ k-means centers per class\n"
+                 "(5-way 5-shot episodes, each dataset's selected prototype backbone)")
+    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=True)
+    p = figures_dir() / "kmeans_ncenters.png"
+    fig.savefig(p, dpi=DPI, bbox_inches="tight"); plt.close(fig)
+    print(f"figure: {p}")
 
 
 def confusion_and_failures():
@@ -161,8 +206,8 @@ def episode_grids():
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
     steps = {"grids": episode_grids, "tsne": lambda: tsne_panels(["mnist", "cifar10", "mini_imagenet"]),
-             "curves": result_curves, "confusion": confusion_and_failures,
-             "clip": clip_zeroshot_panel}
+             "curves": result_curves, "kmeans": kmeans_ncenters,
+             "confusion": confusion_and_failures, "clip": clip_zeroshot_panel}
     for name, fn in steps.items():
         if only and name != only:
             continue

@@ -45,6 +45,14 @@ for ds in ("mnist", "cifar10"):
     display(Image(str(REPO / "results" / "figures" / f"acc_vs_k_simple_{ds}.png"), width=820))
 """),
     ("markdown", """
+### Multi-prototype ablation: does splitting a class into n k-means centers help?
+
+**Not at 5-shot** — paired against the single prototype on each dataset's selected backbone: MNIST tie (−0.32 ± 0.39 for n=2, −0.12 ± 0.43 for n=3), CIFAR-10 significantly worse (−0.94 ± 0.20 / −1.64 ± 0.23), Mini-ImageNet marginally worse. With 5 support samples per class, each center gets ~5/n points and estimation noise dominates. **The reversal at MNIST 10-shot**: 3 centers win by a paired +1.18 ± 1.08 over 10 seeds — digit styles are genuinely multi-modal, but modeling that needs enough shots per center.
+"""),
+    ("code", """
+display(Image(str(REPO / "results" / "figures" / "kmeans_ncenters.png"), width=760))
+"""),
+    ("markdown", """
 ### Qualitative results
 
 The confusion matrices show *where* the prototype head fails: 2/7/9 on MNIST, the cat↔dog and bird↔deer pairs on CIFAR-10. The zero-shot panels show the *least confident* CLIP predictions — even the hardest cases are two-way ambiguities. The failure galleries show the most confident misclassification per (true, predicted) pair.

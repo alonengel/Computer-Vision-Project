@@ -96,6 +96,47 @@ class LinearProbe:
         return lin
 
 
+class KMeansPrototype:
+    """Multi-prototype head: n_centers spherical k-means centers per class,
+    computed from that class's SUPPORT embeddings only (query data never enters
+    clustering). A query is scored by the maximum cosine similarity over a
+    class's centers. n_centers=1 is exactly the cosine prototype classifier.
+
+    Deterministic: centers are initialized from the first min(n_centers, K)
+    support points of each class (support order is already episode-random),
+    then refined with n_iters spherical k-means updates. Empty clusters keep
+    their previous center.
+    """
+
+    def __init__(self, n_centers, n_iters=10):
+        self.n_centers = n_centers
+        self.n_iters = n_iters
+
+    def _class_centers(self, pts):
+        """pts [K, D] (one class's support) -> [m, D] normalized centers."""
+        pts = F.normalize(pts, dim=-1)
+        m = min(self.n_centers, pts.shape[0])
+        centers = pts[:m].clone()
+        for _ in range(self.n_iters):
+            assign = (pts @ centers.T).argmax(dim=1)  # [K]
+            for j in range(m):
+                mask = assign == j
+                if mask.any():
+                    centers[j] = F.normalize(pts[mask].mean(0), dim=-1)
+        return centers
+
+    def predict(self, Xs, ys, Xq):
+        B = Xs.shape[0]
+        n_classes = int(ys.max().item()) + 1
+        Xq_n = F.normalize(Xq, dim=-1)
+        scores = torch.empty(B, Xq.shape[1], n_classes, device=Xq.device, dtype=Xq.dtype)
+        for b in range(B):
+            for c in range(n_classes):
+                centers = self._class_centers(Xs[b][ys[b] == c])
+                scores[b, :, c] = (Xq_n[b] @ centers.T).max(dim=1).values
+        return scores
+
+
 class ZeroShotCLIP:
     """Image-text cosine similarity against cached CLIP text embeddings.
 

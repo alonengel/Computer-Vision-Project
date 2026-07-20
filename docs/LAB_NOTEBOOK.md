@@ -140,6 +140,12 @@ Second LLM review (`_docs/feedbackImprove1.txt`, 9.5/10) caught one genuine meth
 
 **Selection results (validation-based):** prototype → CLIP-eucl on MNIST (statistical tie +0.04±0.07, CLIP kept), DINOv2-cos on CIFAR-10 (+1.16±0.18) and Mini-ImageNet (+0.43±0.11); linear → CLIP everywhere (+2.51/+1.67/+0.67); zero-shot → single prompt on MNIST (+2.96), ensemble on CIFAR-10/Mini-ImageNet. Validation choice agrees with what test would have chosen — the selection generalizes. ResNet-50 stays excluded on Mini-ImageNet (val classes are ImageNet-1k too). All val accuracies in `results/metrics/selection_validation.csv`; docs' "val classes unused" claims corrected; CLAUDE.md rule updated ("never select or tune on test"). Notebook rebuilt (30 cells).
 
+## 2026-07-20 — Multi-prototype (k-means) ablation
+
+User-requested extension (matches the original `_docs/K-Mean Prototype.png` sketch): n_centers ∈ {1,2,3} spherical k-means centers per class from **support only** (deterministic init from first n support points, 10 iterations, empty clusters keep previous center); query scored by max cosine over class centers. Sanity: n=1 verified per-episode **identical** to proto_cos, K=1 clamp degenerates identically. Run only where K ≥ n_centers (episodic 5s, simple 5s/10s), all 3 backbones (grid now 166 repro-checked rows).
+
+**Result — one center is enough at 5-shot, multi-modality pays at K=10:** paired vs the single prototype on each dataset's selected backbone (episodic 5s): MNIST tie (−0.32±0.39, −0.12±0.43), CIFAR-10 significantly worse (−0.94±0.20, −1.64±0.23), Mini-ImageNet marginally worse (−0.10±0.07, −0.16±0.08) — each center gets ~5/n samples, estimation noise dominates. MNIST simple 10-shot: **n=3 wins +1.18±1.08 paired** — digit styles are multi-modal, but need ~3+ shots per center. Stage-2 implication: class-mean targets are right at 5-shot; multi-center targets only at higher K. New `kmeans_ncenters.png` (report Figure 11, others renumbered); ablation heads excluded from main curves for legibility; repro_check green.
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.

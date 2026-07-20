@@ -109,6 +109,24 @@
   },
   {
     "dataset": "mnist",
+    "classifier": "kmeans2_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6649499773979187,
+    "std": 0.03476871077367782
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "kmeans3_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6663699924945832,
+    "std": 0.03497548124566197
+  },
+  {
+    "dataset": "mnist",
     "classifier": "proto_cos__dinov2_vits14",
     "backbone": "dinov2_vits14",
     "k_shot": 5,
@@ -133,6 +151,24 @@
     "n_seeds": 10,
     "acc": 0.7238199651241303,
     "std": 0.030845087075918022
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "kmeans2_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.632369989156723,
+    "std": 0.04129232536157096
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "kmeans3_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.613649982213974,
+    "std": 0.030934740231149577
   },
   {
     "dataset": "mnist",
@@ -163,6 +199,24 @@
   },
   {
     "dataset": "mnist",
+    "classifier": "kmeans2_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6414899885654449,
+    "std": 0.03543361589563068
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "kmeans3_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6339599788188934,
+    "std": 0.037012796921391866
+  },
+  {
+    "dataset": "mnist",
     "classifier": "proto_cos__clip_vitb32",
     "backbone": "clip_vitb32",
     "k_shot": 10,
@@ -187,6 +241,24 @@
     "n_seeds": 10,
     "acc": 0.8862099707126617,
     "std": 0.014069003698936435
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "kmeans2_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7348599791526794,
+    "std": 0.012791078490607014
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "kmeans3_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7450199902057648,
+    "std": 0.019726167116358013
   },
   {
     "dataset": "mnist",
@@ -217,6 +289,24 @@
   },
   {
     "dataset": "mnist",
+    "classifier": "kmeans2_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.6881499767303467,
+    "std": 0.020163123835439722
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "kmeans3_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.6879499852657318,
+    "std": 0.01566137773226106
+  },
+  {
+    "dataset": "mnist",
     "classifier": "proto_cos__resnet50",
     "backbone": "resnet50",
     "k_shot": 10,
@@ -241,6 +331,24 @@
     "n_seeds": 10,
     "acc": 0.826889979839325,
     "std": 0.01975068742630902
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "kmeans2_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7112299740314484,
+    "std": 0.02050600216571927
+  },
+  {
+    "dataset": "mnist",
+    "classifier": "kmeans3_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7141099750995636,
+    "std": 0.01333386600919601
   },
   {
     "dataset": "mnist",
@@ -370,6 +478,24 @@
   },
   {
     "dataset": "cifar10",
+    "classifier": "kmeans2_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.8087999701499939,
+    "std": 0.0203718247865606
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "kmeans3_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.7948099732398987,
+    "std": 0.025340329914070512
+  },
+  {
+    "dataset": "cifar10",
     "classifier": "proto_cos__dinov2_vits14",
     "backbone": "dinov2_vits14",
     "k_shot": 5,
@@ -394,6 +520,24 @@
     "n_seeds": 10,
     "acc": 0.8567999839782715,
     "std": 0.01684510841681804
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "kmeans2_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.8602599799633026,
+    "std": 0.01453930500669364
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "kmeans3_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.8480799734592438,
+    "std": 0.013785877667967144
   },
   {
     "dataset": "cifar10",
@@ -424,6 +568,24 @@
   },
   {
     "dataset": "cifar10",
+    "classifier": "kmeans2_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6656199753284454,
+    "std": 0.02150606210570238
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "kmeans3_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 5,
+    "n_seeds": 10,
+    "acc": 0.6457699835300446,
+    "std": 0.023496720924658238
+  },
+  {
+    "dataset": "cifar10",
     "classifier": "proto_cos__clip_vitb32",
     "backbone": "clip_vitb32",
     "k_shot": 10,
@@ -448,6 +610,24 @@
     "n_seeds": 10,
     "acc": 0.8892999708652496,
     "std": 0.007945783561565304
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "kmeans2_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.8500499844551086,
+    "std": 0.017416607097919503
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "kmeans3_cos__clip_vitb32",
+    "backbone": "clip_vitb32",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.8388199746608734,
+    "std": 0.01707134160249556
   },
   {
     "dataset": "cifar10",
@@ -478,6 +658,24 @@
   },
   {
     "dataset": "cifar10",
+    "classifier": "kmeans2_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.8957099735736846,
+    "std": 0.011684598236383141
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "kmeans3_cos__dinov2_vits14",
+    "backbone": "dinov2_vits14",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.8856999635696411,
+    "std": 0.006293916771328759
+  },
+  {
+    "dataset": "cifar10",
     "classifier": "proto_cos__resnet50",
     "backbone": "resnet50",
     "k_shot": 10,
@@ -502,6 +700,24 @@
     "n_seeds": 10,
     "acc": 0.7531999826431275,
     "std": 0.017926196793988537
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "kmeans2_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7334099888801575,
+    "std": 0.016924508868347357
+  },
+  {
+    "dataset": "cifar10",
+    "classifier": "kmeans3_cos__resnet50",
+    "backbone": "resnet50",
+    "k_shot": 10,
+    "n_seeds": 10,
+    "acc": 0.7202399790287017,
+    "std": 0.021579068708396053
   },
   {
     "dataset": "cifar10",
