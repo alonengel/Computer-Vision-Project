@@ -1,5 +1,9 @@
 CELLS = [
-    ("markdown", "## 5 · Results — episodic protocol (mean ± 95% CI, 600 episodes)"),
+    ("markdown", """
+## 5 · Episodic results — 5-way, K ∈ {1, 5}, 600 fixed episodes
+
+All numbers in this section come from `episodic.csv` (mean ± 95% CI over episodes). Every figure in this section shows **episodic results only**.
+"""),
     ("code", """
 import pandas as pd
 
@@ -15,23 +19,31 @@ for k in sorted(ep["k_shot"].unique()):
     display(t)
 """),
     ("markdown", """
-**How to read the next two charts:** zero-shot CLIP wins on both natural-image datasets but is the *worst* head on MNIST — the one dataset far from its training distribution. In the backbone chart, ResNet-50's Mini-ImageNet bar is inflated by ImageNet-label overlap (§6), not few-shot skill.
+**Overview:** zero-shot CLIP wins on both natural-image datasets but is the *worst* head on MNIST — the one dataset far from its training distribution. In the backbone chart, ResNet-50's Mini-ImageNet bar is inflated by ImageNet-label overlap (§6).
 """),
     ("code", """
 display(Image(str(REPO / "results" / "figures" / "bars_episodic_5shot.png"), width=880))
 display(Image(str(REPO / "results" / "figures" / "bars_backbones.png"), width=880))
 """),
     ("markdown", """
-**Accuracy vs. support size, split by classifier** (one line per embedding; colors are consistent across every chart — blue CLIP, pink DINOv2, yellow ResNet-50):
+**Per-classifier episodic charts** (one line per embedding; colors consistent everywhere — blue CLIP, pink DINOv2, yellow ResNet-50):
 
-- **Prototype**: backbone ranking is dataset-dependent — near-tied on MNIST, DINOv2 clearly ahead on CIFAR-10; the ResNet-50 Mini-ImageNet lead is label contamination (†).
-- **Linear probe**: CLIP is the strongest probe embedding on MNIST/CIFAR-10 at every K — the fixed a-priori training budget favors its normalized features. Note the probe-vs-prototype ranking is encoder-dependent (§6–7).
+- **Prototype**: backbone ranking is dataset-dependent; the ResNet-50 Mini-ImageNet lead is label contamination (†).
+- **Linear probe**: strongest on CLIP embeddings for MNIST/CIFAR-10; note the probe-vs-prototype ranking is encoder-dependent (§6–7).
+- **Zero-shot**: prompt variants compared on episode queries — no shots axis (zero-shot uses class names, not support images).
+- **K-means multi-prototype**: at 5-shot, splitting 5 support samples into n centers never helps (each center gets ~5/n points).
 """),
     ("code", """
-display(Image(str(REPO / "results" / "figures" / "acc_prototype_backbones.png"), width=940))
-display(Image(str(REPO / "results" / "figures" / "acc_linear_backbones.png"), width=940))
+display(Image(str(REPO / "results" / "figures" / "ep_acc_prototype.png"), width=940))
+display(Image(str(REPO / "results" / "figures" / "ep_acc_linear.png"), width=940))
+display(Image(str(REPO / "results" / "figures" / "ep_zeroshot_variants.png"), width=700))
+display(Image(str(REPO / "results" / "figures" / "ep_kmeans_ncenters.png"), width=760))
 """),
-    ("markdown", "## 5b · Results — simple all-classes protocol (mean ± std, 10 seeds)"),
+    ("markdown", """
+## 5b · Simple K-shot results — all 10 classes, K ∈ {1, 5, 10} (MNIST / CIFAR-10)
+
+All numbers in this section come from `simple.csv` (full 10,000-image test set, mean ± std over 10 support seeds). Every figure in this section shows **simple-protocol results only**; Mini-ImageNet has no simple protocol (its R&L test pool has no train/test image split).
+"""),
     ("code", """
 si = pd.read_csv(REPO / "results" / "metrics" / "simple.csv")
 # Zero-shot CLIP is deterministic (no support sampling), so no std is reported
@@ -46,21 +58,20 @@ for ds in ("mnist", "cifar10"):
     display(t)
 """),
     ("markdown", """
-**Zero-shot CLIP by prompt variant** — no shots axis, since zero-shot uses class names rather than support images. The ensemble helps on natural images and *hurts* on MNIST (the generic templates dilute the digit-specific prompt):
-"""),
-    ("code", """
-display(Image(str(REPO / "results" / "figures" / "zeroshot_variants.png"), width=720))
-"""),
-    ("markdown", """
-### Multi-prototype ablation: does splitting a class into n k-means centers help?
+**Per-classifier simple-protocol charts** (same embedding colors as above):
 
-**Not at 5-shot** — paired against the single prototype on each dataset's selected backbone: MNIST tie (−0.32 ± 0.39 for n=2, −0.12 ± 0.43 for n=3), CIFAR-10 significantly worse (−0.94 ± 0.20 / −1.64 ± 0.23), Mini-ImageNet marginally worse. With 5 support samples per class, each center gets ~5/n points and estimation noise dominates. **The reversal at MNIST 10-shot**: 3 centers win by a paired +1.18 ± 1.08 over 10 seeds — digit styles are genuinely multi-modal, but modeling that needs enough shots per center.
+- **Prototype / linear probe**: accuracy vs support size over K ∈ {1, 5, 10}; the probe's CLIP advantage widens with K.
+- **Zero-shot**: single prompt vs ensemble on the full 10-class test set — the ensemble *hurts* on MNIST (generic templates dilute the digit-specific prompt).
+- **K-means multi-prototype**: the K=10 column is where multi-modality finally pays — on MNIST, n=3 beats the single prototype by a paired +1.18 ± 1.08 over 10 seeds.
 """),
     ("code", """
-display(Image(str(REPO / "results" / "figures" / "kmeans_ncenters.png"), width=760))
+display(Image(str(REPO / "results" / "figures" / "simple_acc_prototype.png"), width=800))
+display(Image(str(REPO / "results" / "figures" / "simple_acc_linear.png"), width=800))
+display(Image(str(REPO / "results" / "figures" / "simple_zeroshot_variants.png"), width=620))
+display(Image(str(REPO / "results" / "figures" / "simple_kmeans_ncenters.png"), width=800))
 """),
     ("markdown", """
-### Qualitative results
+### Qualitative results (simple protocol, seed 0)
 
 The confusion matrices show *where* the prototype head fails: 2/7/9 on MNIST, the cat↔dog and bird↔deer pairs on CIFAR-10. The zero-shot panels show the *least confident* CLIP predictions — even the hardest cases are two-way ambiguities. The failure galleries show the most confident misclassification per (true, predicted) pair.
 """),

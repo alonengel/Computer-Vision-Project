@@ -78,14 +78,29 @@ def result_curves():
 
 
 def per_head_charts():
-    """Split accuracy charts by classifier: prototype and linear probe as
-    acc-vs-K lines per backbone; zero-shot as prompt-variant bars (no K)."""
+    """Per-classifier accuracy charts, strictly one evaluation protocol per figure:
+    episodic (5-way, K∈{1,5}, all datasets, episodic.csv) and simple all-classes
+    (K∈{1,5,10}, MNIST/CIFAR-10 only, simple.csv). Never mixed."""
     from src.visualize import head_backbone_curves, zeroshot_variant_bars
 
     ep = pd.read_csv(metrics_dir() / "episodic.csv")
     si = pd.read_csv(metrics_dir() / "simple.csv")
 
-    def series(head_prefix):
+    def ep_panels(head_prefix):
+        panels = []
+        for ds in ("mnist", "cifar10", "mini_imagenet"):
+            s = {}
+            for bb in BACKBONES:
+                g = ep[(ep["dataset"] == ds)
+                       & (ep["classifier"] == f"{head_prefix}__{bb}")].sort_values("k_shot")
+                s[bb] = (g["k_shot"].tolist(), g["acc"].tolist(), g["ci95"].tolist())
+            label = "5-way episodes, ± 95% CI"
+            if ds == "mini_imagenet":
+                label += "; ResNet-50 †contaminated"
+            panels.append({"dataset": ds, "protocol_label": label, "series": s})
+        return panels
+
+    def simple_panels(head_prefix):
         panels = []
         for ds in ("mnist", "cifar10"):
             s = {}
@@ -93,38 +108,47 @@ def per_head_charts():
                 g = si[(si["dataset"] == ds) & (si["classifier"] == f"{head_prefix}__{bb}")
                        & (si["k_shot"] > 0)].sort_values("k_shot")
                 s[bb] = (g["k_shot"].tolist(), g["acc"].tolist(), g["std"].tolist())
-            panels.append({"dataset": ds, "protocol_label": "all classes, ± std over 10 seeds",
+            panels.append({"dataset": ds,
+                           "protocol_label": "all 10 classes, ± std over 10 seeds",
                            "series": s})
-        s = {}
-        for bb in BACKBONES:
-            g = ep[(ep["dataset"] == "mini_imagenet")
-                   & (ep["classifier"] == f"{head_prefix}__{bb}")].sort_values("k_shot")
-            s[bb] = (g["k_shot"].tolist(), g["acc"].tolist(), g["ci95"].tolist())
-        panels.append({"dataset": "mini_imagenet",
-                       "protocol_label": "5-way episodes, ± 95% CI; ResNet-50 †contaminated",
-                       "series": s})
         return panels
 
     print("figure:", head_backbone_curves(
-        series("proto_cos"),
-        "Prototype classifier (cosine): accuracy vs support size, per embedding",
-        "acc_prototype_backbones.png"))
+        ep_panels("proto_cos"),
+        "Prototype classifier (cosine) — EPISODIC protocol (5-way, 600 episodes)",
+        "ep_acc_prototype.png"))
     print("figure:", head_backbone_curves(
-        series("linear"),
-        "Linear probe: accuracy vs support size, per embedding",
-        "acc_linear_backbones.png"))
+        ep_panels("linear"),
+        "Linear probe — EPISODIC protocol (5-way, 600 episodes)",
+        "ep_acc_linear.png"))
+    print("figure:", head_backbone_curves(
+        simple_panels("proto_cos"),
+        "Prototype classifier (cosine) — SIMPLE protocol (all 10 classes, full test set)",
+        "simple_acc_prototype.png"))
+    print("figure:", head_backbone_curves(
+        simple_panels("linear"),
+        "Linear probe — SIMPLE protocol (all 10 classes, full test set)",
+        "simple_acc_linear.png"))
 
-    entries = []
-    for ds in ("mnist", "cifar10"):
-        g = si[(si["dataset"] == ds) & (si["k_shot"] == 0)].set_index("classifier")
-        entries.append({"dataset": ds, "protocol_label": "all 10 classes",
-                        "single": g.loc["clip_zeroshot__clip_vitb32", "acc"],
-                        "ensemble": g.loc["clip_zeroshot_ens__clip_vitb32", "acc"]})
-    g = ep[(ep["dataset"] == "mini_imagenet") & (ep["k_shot"] == 5)].set_index("classifier")
-    entries.append({"dataset": "mini_imagenet", "protocol_label": "5-way episodes",
-                    "single": g.loc["clip_zeroshot__clip_vitb32", "acc"],
-                    "ensemble": g.loc["clip_zeroshot_ens__clip_vitb32", "acc"]})
-    print("figure:", zeroshot_variant_bars(entries, "zeroshot_variants.png"))
+    g = ep[ep["k_shot"] == 5].set_index(["dataset", "classifier"])
+    entries = [{"dataset": ds, "protocol_label": "5-way episodes",
+                "single": g.loc[(ds, "clip_zeroshot__clip_vitb32"), "acc"],
+                "ensemble": g.loc[(ds, "clip_zeroshot_ens__clip_vitb32"), "acc"]}
+               for ds in ("mnist", "cifar10", "mini_imagenet")]
+    print("figure:", zeroshot_variant_bars(
+        entries, "ep_zeroshot_variants.png",
+        "Zero-shot CLIP prompt variants — EPISODIC protocol (5-way episode queries)\n"
+        "(no shots axis — zero-shot uses class names, not support images)"))
+
+    g = si[si["k_shot"] == 0].set_index(["dataset", "classifier"])
+    entries = [{"dataset": ds, "protocol_label": "all 10 classes",
+                "single": g.loc[(ds, "clip_zeroshot__clip_vitb32"), "acc"],
+                "ensemble": g.loc[(ds, "clip_zeroshot_ens__clip_vitb32"), "acc"]}
+               for ds in ("mnist", "cifar10")]
+    print("figure:", zeroshot_variant_bars(
+        entries, "simple_zeroshot_variants.png",
+        "Zero-shot CLIP prompt variants — SIMPLE protocol (all 10 classes, full test set)\n"
+        "(no shots axis — zero-shot uses class names, not support images)"))
 
 
 def kmeans_ncenters():
@@ -160,10 +184,54 @@ def kmeans_ncenters():
                color=colors[n], edgecolor="white")
     ax.set_xticks(x); ax.set_xticklabels([dataset_label(d) for d in datasets])
     ax.set_ylabel("accuracy (%)"); ax.set_ylim(bottom=70)
-    ax.set_title("Multi-prototype ablation: $n$ k-means centers per class\n"
+    ax.set_title("Multi-prototype ablation — EPISODIC protocol: $n$ k-means centers per class\n"
                  "(5-way 5-shot episodes, each dataset's selected prototype backbone)")
     ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=True)
-    p = figures_dir() / "kmeans_ncenters.png"
+    p = figures_dir() / "ep_kmeans_ncenters.png"
+    fig.savefig(p, dpi=DPI, bbox_inches="tight"); plt.close(fig)
+    print(f"figure: {p}")
+
+
+def kmeans_simple():
+    """Multi-prototype ablation under the SIMPLE protocol: n ∈ {1,2,3} centers,
+    K ∈ {5,10}, MNIST/CIFAR-10, each dataset's selected prototype backbone."""
+    import json
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    from src.visualize import DPI, dataset_label, figures_dir
+
+    with open(Path(__file__).resolve().parent.parent / "results" / "artifacts"
+              / "best_baselines.json") as f:
+        best = json.load(f)["selection"]
+    si = pd.read_csv(metrics_dir() / "simple.csv")
+    colors = {1: "#0173B2", 2: "#CC78BC", 3: "#ECE133"}
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), sharey=False)
+    for ax, ds in zip(axes, ("mnist", "cifar10")):
+        bb = best[ds]["prototype"]["backbone"]
+        x = np.arange(2)  # K = 5, 10
+        w = 0.26
+        for i, n in enumerate((1, 2, 3)):
+            name = f"proto_cos__{bb}" if n == 1 else f"kmeans{n}_cos__{bb}"
+            vals, errs = [], []
+            for k in (5, 10):
+                r = si[(si["dataset"] == ds) & (si["k_shot"] == k)
+                       & (si["classifier"] == name)].iloc[0]
+                vals.append(100 * r["acc"]); errs.append(100 * r["std"])
+            ax.bar(x + (i - 1) * w, vals, w, yerr=errs, capsize=4,
+                   label=f"$n$ = {n}" + (" (= prototype)" if n == 1 else ""),
+                   color=colors[n], edgecolor="white")
+        ax.set_xticks(x); ax.set_xticklabels(["K = 5", "K = 10"])
+        ax.set_title(f"{dataset_label(ds)}", fontsize=12)
+        ax.set_ylim(bottom=55)
+    axes[0].set_ylabel("accuracy (%)")
+    axes[1].legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=True)
+    fig.suptitle("Multi-prototype ablation — SIMPLE protocol: $n$ k-means centers per class\n"
+                 "(all 10 classes, full test set, ± std over 10 seeds, selected prototype backbone)",
+                 y=1.06, fontsize=13)
+    fig.tight_layout()
+    p = figures_dir() / "simple_kmeans_ncenters.png"
     fig.savefig(p, dpi=DPI, bbox_inches="tight"); plt.close(fig)
     print(f"figure: {p}")
 
@@ -262,7 +330,8 @@ def main():
         af.baselines(); af.stage2_advised()
 
     steps = {"grids": episode_grids, "tsne": lambda: tsne_panels(["mnist", "cifar10", "mini_imagenet"]),
-             "curves": result_curves, "byhead": per_head_charts, "kmeans": kmeans_ncenters,
+             "curves": result_curves, "byhead": per_head_charts,
+             "kmeans": lambda: (kmeans_ncenters(), kmeans_simple()),
              "confusion": confusion_and_failures, "clip": clip_zeroshot_panel,
              "arch": arch}
     for name, fn in steps.items():

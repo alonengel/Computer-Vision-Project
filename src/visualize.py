@@ -71,12 +71,12 @@ def head_backbone_curves(panels, suptitle, name):
     return _save(fig, name)
 
 
-def zeroshot_variant_bars(entries, name):
+def zeroshot_variant_bars(entries, name, title):
     """Zero-shot CLIP: single prompt vs prompt ensemble per dataset. No shots
     axis — zero-shot uses no support images. entries: list of dicts with
     'dataset', 'protocol_label', 'single', 'ensemble' (accuracy fractions)."""
     x = np.arange(len(entries)); w = 0.35
-    fig, ax = plt.subplots(figsize=(8.5, 5.2))
+    fig, ax = plt.subplots(figsize=(2.6 * len(entries) + 3, 5.2))
     ax.bar(x - w / 2, [100 * e["single"] for e in entries], w,
            label="single prompt", color="#D55E00", edgecolor="white")
     ax.bar(x + w / 2, [100 * e["ensemble"] for e in entries], w,
@@ -88,8 +88,7 @@ def zeroshot_variant_bars(entries, name):
     ax.set_xticklabels([f"{dataset_label(e['dataset'])}\n({e['protocol_label']})"
                         for e in entries], fontsize=11)
     ax.set_ylabel("accuracy (%)"); ax.set_ylim(0, 104)
-    ax.set_title("Zero-shot CLIP: prompt variants per dataset\n"
-                 "(no shots axis — zero-shot uses class names, not support images)")
+    ax.set_title(title)
     ax.legend(loc="upper left", frameon=True)
     return _save(fig, name)
 

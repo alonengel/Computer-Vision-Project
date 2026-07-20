@@ -150,6 +150,14 @@ User-requested extension (matches the original `_docs/K-Mean Prototype.png` sket
 
 User-requested split of the accuracy visualizations by classifier head, replacing the 11-series combined curves as the primary display: `acc_prototype_backbones.png` and `acc_linear_backbones.png` (accuracy vs support size, one line per embedding, panels per dataset with protocol labels — MNIST/CIFAR-10 simple ± std, Mini-ImageNet episodic ± CI with ResNet-50 † noted) and `zeroshot_variants.png` (single prompt vs ensemble per dataset, **no shots axis** — zero-shot uses class names, not support). One fixed color per embedding across every chart (`BACKBONE_COLORS` in `src/visualize.py`); k-means ablation kept in its own chart. Report Figures 5–7 swapped/inserted (others renumbered to 14); combined `acc_vs_k_*` files remain in `results/figures/` as counterparts. Notebook s5 rebuilt around the split charts (34 cells, executed).
 
+## 2026-07-20 — Strict per-protocol figure organization (user catch)
+
+User caught that the per-classifier charts mixed protocols in one figure (MNIST/CIFAR simple + Mini-ImageNet episodic) while sitting in the episodic section — misleading. Restructured to strict one-protocol-per-figure:
+
+- **Episodic set** (`episodic.csv`, 5-way, K∈{1,5}, all 3 datasets): `ep_acc_prototype`, `ep_acc_linear`, `ep_zeroshot_variants` (episode queries), `ep_kmeans_ncenters` (renamed; moved into the episodic section since it uses 5w5s results).
+- **Simple set** (`simple.csv`, all 10 classes, K∈{1,5,10}, MNIST/CIFAR only): `simple_acc_prototype`, `simple_acc_linear`, `simple_zeroshot_variants`, **new** `simple_kmeans_ncenters` (n∈{1,2,3} × K∈{5,10} — visually shows the MNIST K=10 n=3 win).
+- Mixed-protocol figures deleted from the repo. Notebook §5/§5b rebuilt with explicit protocol banners and per-section figure sets (32 cells, executed); report §3.1/§3.2 headers state the data source, figures renumbered 1–18, k-means embed moved from §4 into §3.1 (text cross-references Figures 8/12).
+
 **Known Windows/ROCm quirks carried over from cv-ex2** (guards already in place):
 - `KMP_DUPLICATE_LIB_OK=TRUE` before torch import — otherwise the `clip` package triggers an OpenMP duplicate-runtime crash.
 - CLIP model forced to `.float()` — fp16 weights misbehave on the ROCm stack.
