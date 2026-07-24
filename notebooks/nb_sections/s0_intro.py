@@ -1,22 +1,19 @@
 CELLS = [
     ("markdown", """
-# Stage 1 — Few-Shot Classification Baselines
+# CVLAB Summer Project — Stage 1: Classification Baselines
 
-**MNIST · CIFAR-10 · Mini-ImageNet | frozen pretrained embeddings**
+**DTD · FGVC-Aircraft · Oxford Flowers-102 | frozen pretrained encoders**
 
-This notebook presents the Stage 1 baselines of the project (see `_docs/bigPicture.txt`). Its purpose is **selection, not ranking**: find the strongest configuration of each classifier function per dataset — on validation data — so that Stages 2–3 (Flow Matching) are measured against the hardest possible baseline on identical episodes.
+The goal of Stage 1 is a reliable, reproducible classification pipeline built on **frozen** pretrained encoders. No flow-matching component appears at this stage: the selected prototype branch carries into Stage 2, and the linear-probe setting carries into Stage 3.
 
-Classifier heads (each evaluated on CLIP ViT-B/32, DINOv2 ViT-S/14 and ResNet-50 embeddings):
+The specification (`_docs/stage_1.pdf`) lists three candidate baselines and asks each group to implement the linear probe plus **one** of the two prototype branches. We implement all three so the branch that continues into Stage 2 can be chosen from measured results:
 
-1. **Prototype classifier** — class prototype = mean support embedding; nearest-prototype decision (cosine primary, Euclidean ablation), plus a **multi-prototype k-means ablation** (n centers per class from support only).
-2. **Linear probe** — PyTorch `nn.Linear` trained with `CrossEntropyLoss` on the support set.
-3. **Zero-shot CLIP** — a *semantic reference baseline*: image–text cosine similarity with dataset-specific prompts (single prompt + prompt-ensemble variants; uses class names, not support images).
+1. **Linear probe** (required) — a multiclass linear classifier $s = Wz + b$ on frozen features, softmax cross-entropy, only $W$ and $b$ trained.
+2. **Image-derived class prototypes** (branch A) — $\\mu_c = \\mathrm{normalize}\\left(\\frac{1}{|S_c|}\\sum_{i \\in S_c} \\mathrm{normalize}(z_i)\\right)$, classify by $\\hat{y} = \\arg\\max_c \\cos(z, \\mu_c)$.
+3. **Zero-shot CLIP** (branch B) — text-derived class prototypes from CLIP RN50 prompts, $\\hat{y} = \\arg\\max_c \\cos(z, t_c)$; uses no labeled training images.
 
-Two evaluation protocols:
+**Protocol.** All classes, official train / validation / test splits, never merging train and validation. Training-set sizes $K \\in \\{5, 10, \\text{full}\\}$ images per class; the 5- and 10-shot settings use balanced subsets of the official training split with seeds $\\{0,1,2\\}$. The validation split is used for model selection (linear-probe checkpointing) and the **complete official test split** only for the final top-1 accuracy.
 
-- **Episodic**: 5-way, K ∈ {1, 5}, 15 queries, 600 episodes → mean accuracy ± 95% CI. Mini-ImageNet uses the 20 Ravi & Larochelle *test* classes; MNIST/CIFAR-10 included for comparison.
-- **Simple K-shot**: all classes, K ∈ {1, 5, 10} support per class (drawn from the train split), full test set, 10 seeds → mean ± std.
-
-Everything downstream of the frozen encoders is reproducible from committed artifacts: fixed episode index files (`results/artifacts/episodes/`, fingerprint-verified), cached embeddings, train-split prototypes, CLIP text embeddings, and the final validation-based embedding selection (`results/artifacts/best_baselines.json`) — the exact inputs Stages 2–3 will reuse.
+**Group choices** (documented in `docs/adr/0005-group-choices-within-the-spec.md`): the spec's required pair is DTD + FGVC-Aircraft; Flowers-102 is run additionally and marked ‡ throughout. DINOv2 ViT-S/14 is used on FGVC-Aircraft, the fine-grained task. ResNet-18 is used on all datasets. CLIP RN50 is used for the zero-shot branch only, as the spec restricts it.
 """),
 ]

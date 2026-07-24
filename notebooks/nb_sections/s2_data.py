@@ -1,19 +1,21 @@
 CELLS = [
     ("markdown", """
-## 2 · Datasets & fixed episodes
+## 2 · Datasets, official splits and training subsets
 
-| Dataset | Classes (episodic pool) | Images | Notes |
-|---|---|---|---|
-| MNIST | 10 (test split) | 10,000 | grayscale → 3-channel |
-| CIFAR-10 | 10 (test split) | 10,000 | |
-| Mini-ImageNet | 20 R&L **test** classes | 13,000 (650/class) | `timm/mini-imagenet`, re-partitioned by the canonical Ravi & Larochelle 64/16/20 *class* split (`config/mini_imagenet_splits.json`) |
-
-Episode support/query indices were sampled **once** (seed 42) and saved to `results/artifacts/episodes/` (ADR 0002); every classifier — and stages 2–3 later — evaluates on these exact files. Below: episode 0 of the 5-way 5-shot file for each dataset.
+All classes are used, with the **official** splits: DTD uses partition 1, FGVC-Aircraft uses the `variant` annotation level, Flowers-102 uses its published split. Training and validation splits are never merged.
 """),
     ("code", """
-from IPython.display import Image, display
+splits = pd.read_csv(REPO / "results" / "metrics" / "dataset_splits.csv")
+display(splits)
+"""),
+    ("markdown", """
+For the 5-shot and 10-shot settings a **balanced** subset of the official training split is sampled with seeds {0, 1, 2}; the chosen indices are saved under `results/artifacts/subsets/` so that every encoder and every classification head is trained on bit-identical images. The `full` setting is the complete official training split.
 
-for ds in ("mnist", "cifar10", "mini_imagenet"):
-    display(Image(str(REPO / "results" / "figures" / f"episode_grid_{ds}.png"), width=880))
+Note the structural quirk visible in the table: Flowers-102's official training split contains exactly 10 images per class, so for that dataset the 10-shot setting *is* the full setting (its three 10-shot "runs" therefore see identical data and the spread is exactly zero). DTD (40 per class) and FGVC-Aircraft (~33 per class) give three genuinely distinct settings — which is why they are the spec-selected pair.
+"""),
+    ("code", """
+display(Image(str(REPO / "results" / "figures" / "samples_dtd.png"), width=760))
+display(Image(str(REPO / "results" / "figures" / "samples_fgvc_aircraft.png"), width=760))
+display(Image(str(REPO / "results" / "figures" / "samples_flowers102.png"), width=760))
 """),
 ]

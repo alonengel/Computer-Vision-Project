@@ -1,0 +1,65 @@
+[
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "linear_probe",
+    "k_shot": "5shot",
+    "n_runs": 3,
+    "mean_acc": 0.30709219972292584,
+    "std_acc": 0.016031150917408296
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "image_prototype",
+    "k_shot": "5shot",
+    "n_runs": 3,
+    "mean_acc": 0.4650709231694539,
+    "std_acc": 0.006434493210723973
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "linear_probe",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.44539007544517517,
+    "std_acc": 0.006345930511709181
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "image_prototype",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.5336879293123881,
+    "std_acc": 0.010427883272617107
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "linear_probe",
+    "k_shot": "full",
+    "n_runs": 3,
+    "mean_acc": 0.603723406791687,
+    "std_acc": 0.013361576429526342
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "image_prototype",
+    "k_shot": "full",
+    "n_runs": 1,
+    "mean_acc": 0.5877659320831299,
+    "std_acc": 0.0
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "clip_rn50",
+    "head": "zeroshot_clip",
+    "k_shot": "none",
+    "n_runs": 1,
+    "mean_acc": 0.39787232875823975,
+    "std_acc": 0.0
+  }
+]

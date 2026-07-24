@@ -1,9 +1,15 @@
-"""Frozen-backbone feature extraction with on-disk caching, plus CLIP text embeddings.
+"""Frozen encoders and feature caching (spec: `_docs/stage_1.pdf`).
 
-Backbones (ADR 0001): clip_vitb32 (primary), dinov2_vits14, resnet50 — all frozen.
-Caches: results/features/{dataset}_{split}_{backbone}.pt with
-{features, labels, dim, class_names}. CLIP text embeddings (stage-2 FM targets):
-results/artifacts/clip_text_{dataset}.pt.
+All encoder parameters remain frozen; each checkpoint is used with its own
+associated preprocessing. Train/validation/test features are extracted and cached
+once per (dataset, encoder), and every classifier is trained and evaluated on the
+cached features.
+
+  resnet18       ImageNet-1K torchvision checkpoint, 512-d representation taken
+                 before the final classification layer.
+  dinov2_vits14  facebook/dinov2-small, final class-token representation (384-d).
+  clip_rn50      official OpenAI CLIP RN50, frozen image and text encoders —
+                 used for the zero-shot branch only, per spec.
 """
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -11,90 +17,73 @@ from tqdm import tqdm
 
 from .utils import get_device, load_config, repo_path
 
-BACKBONES = ["clip_vitb32", "dinov2_vits14", "resnet50"]
 
-# Prompt templates per dataset. The first template is the "primary" single prompt;
-# the full list is the prompt-ensemble ablation (averaged, then re-normalized).
-PROMPT_TEMPLATES = {
-    "mnist": [
-        'a photo of the number: "{}".',
-        "a photo of the handwritten digit {}.",
-        "a low-resolution photo of the digit {}.",
-    ],
-    "cifar10": [
-        "a photo of a {}.",
-        "a blurry photo of a {}.",
-        "a low-resolution photo of a {}.",
-        "a photo of a small {}.",
-        "a photo of a big {}.",
-    ],
-    "mini_imagenet": [
-        "a photo of a {}.",
-        "a bad photo of a {}.",
-        "a photo of one {}.",
-        "a close-up photo of a {}.",
-        "a bright photo of a {}.",
-    ],
-}
-# Validation-class text embeddings (selection only) use the same templates.
-PROMPT_TEMPLATES["mini_imagenet_val"] = PROMPT_TEMPLATES["mini_imagenet"]
+def encoders_for(dataset):
+    """Encoder names configured for a dataset, in a stable order."""
+    cfg = load_config()["encoders"]
+    return [e for e, c in cfg.items() if dataset in c["datasets"]]
 
 
-def build_backbone(name):
-    """Return (extract_fn, dim). extract_fn: list[PIL RGB] -> Tensor[B, dim] (CPU, fp32, no grad).
+def supervised_encoders_for(dataset):
+    """Encoders usable by the linear probe / image-prototype heads (excludes CLIP)."""
+    cfg = load_config()["encoders"]
+    return [e for e in encoders_for(dataset) if cfg[e]["supervised_heads"]]
 
-    All backbones are frozen and used purely as feature extractors.
-    """
+
+def build_encoder(name):
+    """Return (extract_fn, dim). extract_fn: list[PIL RGB] -> Tensor[B, dim] (CPU, fp32)."""
     device = get_device()
 
-    if name == "clip_vitb32":
-        import clip
+    if name == "resnet18":
+        from torchvision.models import ResNet18_Weights, resnet18
 
-        model, preprocess = clip.load("ViT-B/32", device=device)
-        model = model.float().eval()  # fp32: fp16 weights misbehave on ROCm-Windows
-        dim = model.visual.output_dim  # 512
-
-        @torch.no_grad()
-        def extract(pil_list):
-            imgs = torch.stack([preprocess(p) for p in pil_list]).to(device)
-            return model.encode_image(imgs).float().cpu()
-
-        return extract, dim
-
-    if name == "dinov2_vits14":
-        from transformers import AutoImageProcessor, AutoModel
-
-        model = AutoModel.from_pretrained("facebook/dinov2-small").to(device).eval()
-        proc = AutoImageProcessor.from_pretrained("facebook/dinov2-small")
-        dim = model.config.hidden_size  # 384
-
-        @torch.no_grad()
-        def extract(pil_list):
-            inp = proc(images=pil_list, return_tensors="pt").to(device)
-            out = model(**inp)
-            feat = out.pooler_output if out.pooler_output is not None \
-                else out.last_hidden_state[:, 0]
-            return feat.float().cpu()
-
-        return extract, dim
-
-    if name == "resnet50":
-        from torchvision.models import ResNet50_Weights, resnet50
-
-        weights = ResNet50_Weights.IMAGENET1K_V2
-        model = resnet50(weights=weights).to(device).eval()
-        model.fc = torch.nn.Identity()  # penultimate (2048-d) features
+        weights = ResNet18_Weights.IMAGENET1K_V1
+        model = resnet18(weights=weights).to(device).eval()
+        model.fc = torch.nn.Identity()  # 512-d representation before the classifier
         preprocess = weights.transforms()
-        dim = 2048
+        for p in model.parameters():
+            p.requires_grad_(False)
 
         @torch.no_grad()
         def extract(pil_list):
             imgs = torch.stack([preprocess(p) for p in pil_list]).to(device)
             return model(imgs).float().cpu()
 
-        return extract, dim
+        return extract, 512
 
-    raise ValueError(f"unknown backbone {name}")
+    if name == "dinov2_vits14":
+        from transformers import AutoImageProcessor, AutoModel
+
+        model = AutoModel.from_pretrained("facebook/dinov2-small").to(device).eval()
+        proc = AutoImageProcessor.from_pretrained("facebook/dinov2-small")
+        for p in model.parameters():
+            p.requires_grad_(False)
+
+        @torch.no_grad()
+        def extract(pil_list):
+            inp = proc(images=pil_list, return_tensors="pt").to(device)
+            out = model(**inp)
+            cls = out.last_hidden_state[:, 0]  # final class token
+            return cls.float().cpu()
+
+        return extract, model.config.hidden_size
+
+    if name == "clip_rn50":
+        import clip
+
+        model, preprocess = clip.load("RN50", device=device)
+        model = model.float().eval()  # fp32: fp16 weights misbehave on ROCm-Windows
+        for p in model.parameters():
+            p.requires_grad_(False)
+
+        @torch.no_grad()
+        def extract(pil_list):
+            imgs = torch.stack([preprocess(p) for p in pil_list]).to(device)
+            return model.encode_image(imgs).float().cpu()
+
+        return extract, model.visual.output_dim
+
+    raise ValueError(f"unknown encoder {name}")
 
 
 class _PoolDataset(Dataset):
@@ -124,27 +113,32 @@ def extract_features(pool, extract_fn, batch_size=128):
     return torch.cat(feats).contiguous(), torch.cat(labels)
 
 
-def feat_path(dataset, split, backbone):
+def feat_path(dataset, split, encoder):
     d = repo_path(load_config()["paths"]["features_dir"])
     d.mkdir(parents=True, exist_ok=True)
-    return d / f"{dataset}_{split}_{backbone}.pt"
+    return d / f"{dataset}_{split}_{encoder}.pt"
 
 
-def cache_features(pool, backbone_name, extract_fn, dim):
-    """Extract + save unless the cache already exists. Returns the cache path."""
-    path = feat_path(pool.name, pool.split, backbone_name)
+def cache_features(pool, encoder_name, extract_fn, dim):
+    """Extract + save unless the cache exists. Returns the cache path."""
+    path = feat_path(pool.name, pool.split, encoder_name)
     if path.exists():
         return path
     feats, labels = extract_features(pool, extract_fn)
-    assert (labels.numpy() == pool.labels).all(), "extraction shuffled labels"
+    assert (labels.numpy() == pool.labels).all(), "extraction reordered labels"
     torch.save({"features": feats, "labels": labels, "dim": dim,
-                "class_names": pool.class_names}, path)
+                "class_names": pool.class_names, "dataset": pool.name,
+                "split": pool.split, "encoder": encoder_name}, path)
     return path
 
 
-def load_features(dataset, split, backbone):
-    return torch.load(feat_path(dataset, split, backbone), weights_only=True)
+def load_features(dataset, split, encoder):
+    return torch.load(feat_path(dataset, split, encoder), weights_only=True)
 
+
+# --------------------------------------------------------------------------- #
+# CLIP text prototypes (zero-shot branch)
+# --------------------------------------------------------------------------- #
 
 def clip_text_path(dataset):
     d = repo_path(load_config()["paths"]["artifacts_dir"])
@@ -153,26 +147,23 @@ def clip_text_path(dataset):
 
 
 @torch.no_grad()
-def cache_clip_text_embeddings(dataset, class_names):
-    """Encode class prompts with CLIP ViT-B/32. Saves both the primary single-prompt
-    embeddings and the ensemble average (each L2-normalized) — stage-2 FM targets."""
+def cache_clip_text_prototypes(dataset, class_names):
+    """One L2-normalized text prototype per class from the dataset's spec prompt."""
     import clip
 
     path = clip_text_path(dataset)
+    prompt = load_config()["datasets"][dataset]["prompt"]
     if path.exists():
-        return path
+        d = torch.load(path, weights_only=True)
+        if d.get("prompt") == prompt and d.get("class_names") == list(class_names):
+            return path
+
     device = get_device()
-    model, _ = clip.load("ViT-B/32", device=device)
+    model, _ = clip.load("RN50", device=device)
     model = model.float().eval()
-    templates = PROMPT_TEMPLATES[dataset]
-    per_template = []
-    for t in templates:
-        tokens = clip.tokenize([t.format(c) for c in class_names]).to(device)
-        emb = model.encode_text(tokens).float().cpu()
-        per_template.append(emb / emb.norm(dim=-1, keepdim=True))
-    stack = torch.stack(per_template)  # [T, C, D]
-    ensemble = stack.mean(0)
-    ensemble = ensemble / ensemble.norm(dim=-1, keepdim=True)
-    torch.save({"primary": stack[0], "ensemble": ensemble, "templates": templates,
+    tokens = clip.tokenize([prompt.format(c) for c in class_names]).to(device)
+    emb = model.encode_text(tokens).float().cpu()
+    emb = emb / emb.norm(dim=-1, keepdim=True)
+    torch.save({"text_prototypes": emb, "prompt": prompt,
                 "class_names": list(class_names)}, path)
     return path

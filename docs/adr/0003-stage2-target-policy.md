@@ -1,6 +1,8 @@
-# ADR 0003 — Stage 2 Flow-Matching targets must not use evaluation-split statistics
+﻿# ADR 0003 — Stage 2 Flow-Matching targets must not use evaluation-split statistics
 
-**Status:** accepted (2026-07-17, following cv-expert methodology review)
+**Status:** REVISED by ADR 0004 (2026-07-24). The principle stands — Stage-2 Flow-Matching targets must never be computed from evaluation-split data — but the concrete artifact names refer to the archived v1 protocol. Under the current spec the legitimate targets are class prototypes computed from the selected *training* subset, or CLIP text prototypes.
+
+**Status (original):** accepted (2026-07-17, following cv-expert methodology review)
 
 **Context.** Stage 2 trains a Flow Matching model to transport embeddings toward class representations. An early version of the extraction script cached class-mean prototypes computed from full *test* splits (including the 13,000 Mini-ImageNet test-class images) labeled as "stage-2 FM targets". Training FM against full-eval-split prototypes would leak test data into training, and no Stage 1 baseline sees that information (they compute prototypes from K support shots only) — the comparison would be unfair by construction.
 

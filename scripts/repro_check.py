@@ -1,8 +1,9 @@
-"""Reproducibility check: re-derive every headline number from saved raw artifacts.
+"""Reproducibility check: re-derive every summary number from the saved raw arrays.
 
-Loads the per-episode / per-seed raw accuracy arrays (results/metrics/raw/) and
-verifies that the mean/CI/std values in the committed metrics tables match them
-exactly. Independent of feature extraction and experiment code paths.
+Loads results/metrics/raw/*.npy (per-run top-1 accuracies) and verifies that the
+mean and standard deviation reported in summary.csv match, and that the per-run
+table in runs.csv contains exactly those accuracies. Independent of the training
+and feature-extraction code paths.
 """
 import sys
 from pathlib import Path
@@ -12,36 +13,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np
 import pandas as pd
 
-from src.evaluation import ci95, metrics_dir
-
-
-def check_table(table_name, raw_prefix, err_col, err_fn):
-    df = pd.read_csv(metrics_dir() / f"{table_name}.csv")
-    bad = 0
-    for _, row in df.iterrows():
-        if table_name == "episodic":
-            raw_name = (f"{raw_prefix}_{row['dataset']}_{row['n_way']}w{row['k_shot']}s_"
-                        f"{row['classifier']}")
-        else:
-            raw_name = f"{raw_prefix}_{row['dataset']}_{row['k_shot']}s_{row['classifier']}"
-        raw = np.load(metrics_dir("raw") / f"{raw_name}.npy")
-        ok_acc = np.isclose(raw.mean(), row["acc"], atol=1e-6)
-        expected_err = 0.0 if len(raw) < 2 else err_fn(raw)  # single-value rows (zero-shot)
-        ok_err = np.isclose(expected_err, row[err_col], atol=1e-6)
-        if not (ok_acc and ok_err):
-            bad += 1
-            print(f"MISMATCH {raw_name}: table acc={row['acc']:.6f} err={row[err_col]:.6f} "
-                  f"vs raw {raw.mean():.6f} / {err_fn(raw):.6f}")
-    print(f"{table_name}: {len(df)} rows checked, {bad} mismatches")
-    return bad
+from src.evaluation import metrics_dir, summarize
 
 
 def main():
-    bad = check_table("episodic", "ep", "ci95", ci95)
-    bad += check_table("simple", "simple", "std", lambda a: np.std(a, ddof=1))
+    summary = pd.read_csv(metrics_dir() / "summary.csv")
+    runs = pd.read_csv(metrics_dir() / "runs.csv")
+    bad = 0
+    for _, row in summary.iterrows():
+        name = f"{row['head']}_{row['dataset']}_{row['encoder']}_{row['k_shot']}"
+        raw = np.load(metrics_dir("raw") / f"{name}.npy")
+        m, s = summarize(raw)
+        if len(raw) != row["n_runs"] or not np.isclose(m, row["mean_acc"], atol=1e-9) \
+                or not np.isclose(s, row["std_acc"], atol=1e-9):
+            bad += 1
+            print(f"MISMATCH {name}: table {row['n_runs']} runs "
+                  f"{row['mean_acc']:.6f}±{row['std_acc']:.6f} vs raw {len(raw)} runs "
+                  f"{m:.6f}±{s:.6f}")
+            continue
+        sel = runs[(runs["dataset"] == row["dataset"]) & (runs["encoder"] == row["encoder"])
+                   & (runs["head"] == row["head"]) & (runs["k_shot"] == row["k_shot"])]
+        if not np.allclose(np.sort(sel["test_acc"].to_numpy()), np.sort(raw), atol=1e-9):
+            bad += 1
+            print(f"MISMATCH {name}: runs.csv accuracies differ from raw array")
+    print(f"summary: {len(summary)} rows checked, {bad} mismatches")
     if bad:
         sys.exit(f"repro check FAILED: {bad} mismatching rows")
-    print("repro check PASSED: all table numbers re-derived from raw artifacts")
+    print("repro check PASSED: all summary numbers re-derived from raw artifacts")
 
 
 if __name__ == "__main__":

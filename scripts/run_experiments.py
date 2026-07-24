@@ -1,143 +1,138 @@
-"""Run the full Stage 1 experiment grid from cached features + saved episode files.
+"""Run the full Stage 1 experiment grid on cached frozen features.
 
-Episodic (5-way, K∈{1,5}, 600 episodes, mean ± 95% CI):
-  prototype-cosine / prototype-euclidean on all 3 backbones,
-  linear probe + zero-shot CLIP (primary & ensemble prompts) on clip_vitb32.
-Simple (all classes, K∈{1,5,10}, 10 seeds, full test set, mean ± std) on mnist/cifar10:
-  same classifier grid.
+Protocol (spec: `_docs/stage_1.pdf`):
+  K in {5, 10, full} training images per class, from the official training split.
+  * 5-shot / 10-shot : 3 runs, one per balanced-subset seed {0,1,2}
+                       (linear-probe initialization fixed, so the spread measures
+                        training-subset sampling).
+  * full linear probe: 3 runs, one per classifier-initialization seed {0,1,2}
+                       (training set fixed, so the spread measures initialization).
+  * full image prototypes and zero-shot CLIP: a single run each (deterministic).
+Model selection uses the validation split only (linear-probe checkpointing);
+top-1 accuracy is measured once on the complete official test split.
 
---smoke runs a reduced grid (20 episodes, 2 seeds) for sanity checking.
+`--smoke` shortens the probe to a few epochs for a pipeline check.
 """
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import numpy as np
 import torch
 
-from src.classifiers import (KMeansPrototype, LinearProbe, PrototypeClassifier,
-                             ZeroShotCLIP)
-from src.data import episodic_path, simple_path
-from src.embeddings import clip_text_path, load_features
-from src.evaluation import ci95, run_episodic, run_simple, save_raw, save_table
+from src.classifiers import LinearProbe, PrototypeClassifier, ZeroShotCLIP
+from src.data import training_indices
+from src.embeddings import (clip_text_path, encoders_for, load_features,
+                            supervised_encoders_for)
+from src.evaluation import (save_curves, save_predictions, save_raw, save_table,
+                            summarize, top1)
 from src.utils import load_config, set_seed
 
-BACKBONE_GRID = ["clip_vitb32", "dinov2_vits14", "resnet50"]
-PRIMARY = "clip_vitb32"
+
+def k_label(k):
+    return "full" if k == "full" else f"{k}shot"
 
 
-def load_text(dataset):
-    from src.embeddings import PROMPT_TEMPLATES
-
-    text = torch.load(clip_text_path(dataset), weights_only=True)
-    assert text["templates"] == PROMPT_TEMPLATES[dataset], \
-        f"stale CLIP text cache for {dataset}: templates changed — re-run extraction"
-    return text
-
-
-def support_classifiers():
-    """(name, backbone, classifier) — heads that use the support set.
-
-    Prototype AND linear probe on every backbone: the full head × encoder grid
-    cleanly separates encoder effects from classifier effects.
-    """
-    grid = []
-    for bb in BACKBONE_GRID:
-        grid.append((f"proto_cos__{bb}", bb, PrototypeClassifier("cosine")))
-        grid.append((f"proto_eucl__{bb}", bb, PrototypeClassifier("euclidean")))
-        grid.append((f"linear__{bb}", bb, LinearProbe()))
-        # Multi-prototype ablation: n spherical k-means centers per class from
-        # support only. n=1 is exactly proto_cos, so only n in {2,3} are run,
-        # and only where K >= n_centers (else it degenerates to the mean).
-        grid.append((f"kmeans2_cos__{bb}", bb, KMeansPrototype(2)))
-        grid.append((f"kmeans3_cos__{bb}", bb, KMeansPrototype(3)))
-    return grid
-
-
-def zeroshot_classifiers(dataset):
-    """(name, backbone, classifier) — support-free heads (zero-shot CLIP)."""
-    text = load_text(dataset)
-    return [(f"clip_zeroshot__{PRIMARY}", PRIMARY, ZeroShotCLIP(text["primary"])),
-            (f"clip_zeroshot_ens__{PRIMARY}", PRIMARY, ZeroShotCLIP(text["ensemble"]))]
-
-
-def main(smoke=False):
+def main(smoke=False, only_datasets=None):
     cfg = load_config()
-    ep_cfg, si_cfg = cfg["episodic"], cfg["simple"]
-    n_episodes = cfg["smoke"]["n_episodes"] if smoke else ep_cfg["n_episodes"]
-    seeds = si_cfg["seeds"][:2] if smoke else si_cfg["seeds"]
+    overrides = {"max_epochs": cfg["smoke"]["max_epochs"]} if smoke else {}
     tag = "_smoke" if smoke else ""
-    set_seed(ep_cfg["seed"])
+    runs, summary = [], []
 
-    episodic_rows = []
-    for ds in cfg["datasets"]:
-        feats = {bb: load_features(ds, "test", bb) for bb in BACKBONE_GRID}
-        for k in ep_cfg["shots"]:
-            episode = torch.load(episodic_path(ds, ep_cfg["n_way"], k, ep_cfg["seed"]),
-                                 weights_only=True)
-            assert episode["n_way"] == ep_cfg["n_way"] and \
-                episode["n_query"] == ep_cfg["n_query"] and \
-                episode["classes"].shape[0] == ep_cfg["n_episodes"], \
-                f"episode file for {ds} K={k} does not match config — regenerate"
-            if smoke:
-                episode = {**episode,
-                           "classes": episode["classes"][:n_episodes],
-                           "support_idx": episode["support_idx"][:n_episodes],
-                           "query_idx": episode["query_idx"][:n_episodes]}
-            grid = ([(n, b, c, False) for n, b, c in support_classifiers()] +
-                    [(n, b, c, True) for n, b, c in zeroshot_classifiers(ds)])
-            for name, bb, clf, subset_aware in grid:
-                if isinstance(clf, KMeansPrototype) and k < clf.n_centers:
-                    continue  # degenerates to the plain prototype
-                accs = run_episodic(feats[bb], episode, clf, class_subset_aware=subset_aware)
-                save_raw(f"ep{tag}_{ds}_{ep_cfg['n_way']}w{k}s_{name}", accs)
-                episodic_rows.append({
-                    "dataset": ds, "classifier": name, "backbone": bb,
-                    "n_way": ep_cfg["n_way"], "k_shot": k, "n_episodes": len(accs),
-                    "acc": float(np.mean(accs)), "ci95": float(ci95(accs)),
-                })
-                print(f"[ep] {ds} {ep_cfg['n_way']}w{k}s {name}: "
-                      f"{100 * np.mean(accs):.2f} ± {100 * ci95(accs):.2f}", flush=True)
-    save_table(episodic_rows, f"episodic{tag}")
+    for ds in (only_datasets or list(cfg["datasets"])):
+        n_classes = cfg["datasets"][ds]["n_classes"]
+        for enc in supervised_encoders_for(ds):
+            f = {s: load_features(ds, s, enc) for s in ("train", "val", "test")}
+            Xtr, ytr = f["train"]["features"], f["train"]["labels"].long()
+            Xval, yval = f["val"]["features"], f["val"]["labels"].long()
+            Xte, yte = f["test"]["features"], f["test"]["labels"].long()
+            dim = f["train"]["dim"]
 
-    simple_rows = []
-    for ds in ("mnist", "cifar10"):
-        train_f = {bb: load_features(ds, "train", bb) for bb in BACKBONE_GRID}
-        test_f = {bb: load_features(ds, "test", bb) for bb in BACKBONE_GRID}
-        for k in si_cfg["shots"]:
-            for name, bb, clf in support_classifiers():
-                if isinstance(clf, KMeansPrototype) and k < clf.n_centers:
-                    continue
+            for k in cfg["shots"]:
+                # ---- linear probe (required baseline) ----
                 accs = []
-                for seed in seeds:
-                    support = torch.load(simple_path(ds, k, seed), weights_only=True)
-                    if isinstance(clf, LinearProbe):
-                        clf = LinearProbe(seed=seed)  # fresh head per seed
-                    acc, pred, true = run_simple(train_f[bb], test_f[bb], support, clf)
+                for run, seed in enumerate(cfg["init_seeds"] if k == "full"
+                                           else cfg["subset_seeds"]):
+                    subset_seed = 0 if k == "full" else seed
+                    init_seed = seed if k == "full" else 0
+                    idx = training_indices(ds, k, subset_seed, f["train"]["labels"].numpy())
+                    set_seed(init_seed)
+                    probe = LinearProbe(n_classes, dim, seed=init_seed, **overrides)
+                    probe.fit(Xtr[idx], ytr[idx], Xval, yval)
+                    pred = probe.predict(Xte)
+                    acc = top1(pred, yte)
                     accs.append(acc)
-                save_raw(f"simple{tag}_{ds}_{k}s_{name}", accs)
-                simple_rows.append({
-                    "dataset": ds, "classifier": name, "backbone": bb, "k_shot": k,
-                    "n_seeds": len(accs),
-                    "acc": float(np.mean(accs)), "std": float(np.std(accs, ddof=1)),
-                })
-                print(f"[simple] {ds} {k}s {name}: "
-                      f"{100 * np.mean(accs):.2f} ± {100 * np.std(accs, ddof=1):.2f}", flush=True)
-        # Zero-shot ignores support: K- and seed-independent, so report one row
-        # per dataset (k_shot=0) instead of duplicated "± 0.00" rows.
-        support0 = torch.load(simple_path(ds, si_cfg["shots"][0], seeds[0]), weights_only=True)
-        for name, bb, clf in zeroshot_classifiers(ds):
-            acc, pred, true = run_simple(train_f[bb], test_f[bb], support0, clf)
-            save_raw(f"simple{tag}_{ds}_0s_{name}", [acc])
-            simple_rows.append({
-                "dataset": ds, "classifier": name, "backbone": bb, "k_shot": 0,
-                "n_seeds": 1, "acc": float(acc), "std": 0.0,
-            })
-            print(f"[simple] {ds} zero-shot {name}: {100 * acc:.2f}", flush=True)
-    save_table(simple_rows, f"simple{tag}")
+                    runs.append({"dataset": ds, "encoder": enc, "head": "linear_probe",
+                                 "k_shot": k_label(k), "run": run,
+                                 "seed_type": "init" if k == "full" else "subset",
+                                 "seed": seed, "n_train": len(idx),
+                                 "test_acc": acc, "val_acc": probe.best["val_acc"],
+                                 "best_epoch": probe.best["epoch"]})
+                    if run == 0:
+                        save_predictions(f"{tag.lstrip('_') or 'run'}_{ds}_{enc}_"
+                                         f"linear_probe_{k_label(k)}", pred, yte)
+                    if k == 10 and run == 0 and not smoke:
+                        # representative 10-shot run per dataset-encoder: loss curves
+                        save_curves(f"{ds}_{enc}_10shot_seed0", probe.history)
+                    print(f"[probe] {ds}/{enc} {k_label(k)} run{run}: "
+                          f"test {100 * acc:.2f} (val {100 * probe.best['val_acc']:.2f} "
+                          f"@ep{probe.best['epoch']})", flush=True)
+                save_raw(f"linear_probe{tag}_{ds}_{enc}_{k_label(k)}", accs)
+                m, s = summarize(accs)
+                summary.append({"dataset": ds, "encoder": enc, "head": "linear_probe",
+                                "k_shot": k_label(k), "n_runs": len(accs),
+                                "mean_acc": m, "std_acc": s})
+
+                # ---- branch A: image-derived class prototypes ----
+                seeds = [0] if k == "full" else cfg["subset_seeds"]
+                accs = []
+                for run, seed in enumerate(seeds):
+                    idx = training_indices(ds, k, seed, f["train"]["labels"].numpy())
+                    proto = PrototypeClassifier(n_classes).fit(Xtr[idx], ytr[idx])
+                    pred = proto.predict(Xte)
+                    acc = top1(pred, yte)
+                    accs.append(acc)
+                    runs.append({"dataset": ds, "encoder": enc, "head": "image_prototype",
+                                 "k_shot": k_label(k), "run": run, "seed_type": "subset",
+                                 "seed": seed, "n_train": len(idx), "test_acc": acc,
+                                 "val_acc": "", "best_epoch": ""})
+                    if run == 0:
+                        save_predictions(f"{tag.lstrip('_') or 'run'}_{ds}_{enc}_"
+                                         f"image_prototype_{k_label(k)}", pred, yte)
+                    print(f"[proto] {ds}/{enc} {k_label(k)} run{run}: "
+                          f"test {100 * acc:.2f}", flush=True)
+                save_raw(f"image_prototype{tag}_{ds}_{enc}_{k_label(k)}", accs)
+                m, s = summarize(accs)
+                summary.append({"dataset": ds, "encoder": enc, "head": "image_prototype",
+                                "k_shot": k_label(k), "n_runs": len(accs),
+                                "mean_acc": m, "std_acc": s})
+
+        # ---- branch B: zero-shot CLIP (no labeled training images) ----
+        if "clip_rn50" in encoders_for(ds):
+            fte = load_features(ds, "test", "clip_rn50")
+            text = torch.load(clip_text_path(ds), weights_only=True)
+            assert text["class_names"] == fte["class_names"], \
+                f"{ds}: text prototypes and features disagree on class order"
+            zs = ZeroShotCLIP(text["text_prototypes"])
+            yte_c = fte["labels"].long()
+            pred = zs.predict(fte["features"])
+            acc = top1(pred, yte_c)
+            runs.append({"dataset": ds, "encoder": "clip_rn50", "head": "zeroshot_clip",
+                         "k_shot": "none", "run": 0, "seed_type": "deterministic",
+                         "seed": 0, "n_train": 0, "test_acc": acc,
+                         "val_acc": "", "best_epoch": ""})
+            save_predictions(f"{tag.lstrip('_') or 'run'}_{ds}_clip_rn50_zeroshot_clip_none",
+                             pred, yte_c)
+            save_raw(f"zeroshot_clip{tag}_{ds}_clip_rn50_none", [acc])
+            summary.append({"dataset": ds, "encoder": "clip_rn50", "head": "zeroshot_clip",
+                            "k_shot": "none", "n_runs": 1, "mean_acc": acc, "std_acc": 0.0})
+            print(f"[zeroshot] {ds}: test {100 * acc:.2f}", flush=True)
+
+    save_table(runs, f"runs{tag}")
+    save_table(summary, f"summary{tag}")
     print("done.")
 
 
 if __name__ == "__main__":
-    main(smoke="--smoke" in sys.argv)
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    main(smoke="--smoke" in sys.argv, only_datasets=args or None)

@@ -1,8 +1,8 @@
-"""Cache every needed dataset × backbone embedding + CLIP text embeddings + prototype artifacts.
+"""Cache train/validation/test features for every (dataset, encoder) pair, plus
+CLIP RN50 text prototypes for the zero-shot branch.
 
-Feature caches (skip-if-exists):
-  mnist/cifar10: train + test splits × all backbones
-  mini_imagenet: R&L test-class pool × all backbones
+Encoders stay frozen; extraction happens once and every classifier is trained and
+evaluated on these caches (spec: `_docs/stage_1.pdf`).
 """
 import sys
 from pathlib import Path
@@ -11,21 +11,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import torch
 
-from src.data import load_pool
-from src.embeddings import (BACKBONES, build_backbone, cache_clip_text_embeddings,
-                            cache_features, feat_path, load_features)
-from src.evaluation import save_prototype_artifacts
-from src.utils import allow_insecure_downloads, get_device
+from src.data import SPLITS, load_pool
+from src.embeddings import (build_encoder, cache_clip_text_prototypes, cache_features,
+                            encoders_for, feat_path)
+from src.utils import allow_insecure_downloads, get_device, load_config
 
 
-POOL_SPECS = [("mnist", "train"), ("mnist", "test"),
-              ("cifar10", "train"), ("cifar10", "test"),
-              ("mini_imagenet", "test"),
-              ("mini_imagenet", "val")]  # R&L val classes: embedding selection only
-
-
-def main():
+def main(only_datasets=None):
     allow_insecure_downloads()
+    cfg = load_config()
+    datasets = only_datasets or list(cfg["datasets"])
+
+    # (encoder -> [(dataset, split)]) so each encoder is built at most once.
+    todo = {}
+    for ds in datasets:
+        for enc in encoders_for(ds):
+            for split in SPLITS:
+                if not feat_path(ds, split, enc).exists():
+                    todo.setdefault(enc, []).append((ds, split))
 
     pools = {}
 
@@ -34,35 +37,29 @@ def main():
             pools[(ds, split)] = load_pool(ds, split)
         return pools[(ds, split)]
 
-    for bb in BACKBONES:
-        todo = [(d, s) for d, s in POOL_SPECS if not feat_path(d, s, bb).exists()]
-        if not todo:
-            print(f"[skip] {bb}: all caches present")
-            continue
-        print(f"=== backbone: {bb} ===", flush=True)
-        extract_fn, dim = build_backbone(bb)
-        for ds, split in todo:
-            path = cache_features(pool(ds, split), bb, extract_fn, dim)
-            print(f"  cached {ds}/{split} -> {path.name}")
+    for enc, items in todo.items():
+        print(f"=== encoder: {enc} ===", flush=True)
+        extract_fn, dim = build_encoder(enc)
+        print(f"  dim = {dim}")
+        for ds, split in items:
+            path = cache_features(pool(ds, split), enc, extract_fn, dim)
+            print(f"  cached {ds}/{split} -> {path.name}", flush=True)
         del extract_fn
         if get_device() == "cuda":
             torch.cuda.empty_cache()
+    if not todo:
+        print("[skip] all feature caches present")
 
-    for ds, split, text_key in [("mnist", "train", "mnist"), ("cifar10", "train", "cifar10"),
-                                ("mini_imagenet", "test", "mini_imagenet"),
-                                ("mini_imagenet", "val", "mini_imagenet_val")]:
-        names = load_features(ds, split, "clip_vitb32")["class_names"]
-        print(f"CLIP text embeddings: {cache_clip_text_embeddings(text_key, names).name}")
-
-    # Class-mean prototypes from TRAIN splits only (ADR 0003): full-eval-split
-    # statistics must never become stage-2 training targets — that would leak
-    # test data into FM training and be unfair to the support-only baselines.
-    for ds, split in [("mnist", "train"), ("cifar10", "train")]:
-        for bb in BACKBONES:
-            save_prototype_artifacts(load_features(ds, split, bb), ds, split, bb)
-        print(f"prototypes saved for {ds}/{split} (all backbones)")
+    for ds in datasets:
+        if "clip_rn50" not in encoders_for(ds):
+            continue
+        names = pool(ds, "test").class_names
+        path = cache_clip_text_prototypes(ds, names)
+        print(f"CLIP text prototypes: {path.name} "
+              f"(prompt: {cfg['datasets'][ds]['prompt']})")
     print("done.")
 
 
 if __name__ == "__main__":
-    main()
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    main(only_datasets=args or None)

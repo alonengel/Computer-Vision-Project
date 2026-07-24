@@ -1,37 +1,37 @@
-"""Dataset pools (MNIST, CIFAR-10, Mini-ImageNet) and episode/support-set sampling.
+"""Datasets and training-subset sampling for Stage 1 (spec: `_docs/stage_1.pdf`).
 
-Every dataset is exposed as a `Pool`: a flat indexable collection of (PIL RGB image,
-int label) with class names. Episode and support-set indices are sampled once per
-(dataset, protocol, seed) and saved under results/artifacts/episodes/ so that all
-classifiers — and the Flow Matching stages later — evaluate on identical data (ADR 0002).
+Three datasets, all classes, **official** train / validation / test splits:
+  dtd            — torchvision DTD, official partition 1
+  fgvc_aircraft  — torchvision FGVCAircraft, `variant` annotation level
+  flowers102     — torchvision Flowers102
+
+Training and validation splits are never merged. The validation split is used for
+model selection (linear-probe checkpointing); the test split is used only for the
+final evaluation.
+
+For methods that use labeled training examples we evaluate K in {5, 10, full}:
+K = number of training images per class. For K in {5, 10} a *balanced* subset is
+sampled from the official training split with seeds {0, 1, 2}; the subset indices
+are saved to results/artifacts/subsets/ so every encoder and every head sees the
+identical training images. "full" is the complete official training split.
 """
+import hashlib
 import json
+import os
 
 import numpy as np
 import torch
 
 from .utils import load_config, repo_path
 
-# Keep the HF datasets cache on D: next to the repo (config data root).
-import os
+# Keep any HF cache next to the repo on D:.
 os.environ.setdefault("HF_HOME", str(repo_path("data", "hf")))
 
-MINI_IMAGENET_HF_ID = "timm/mini-imagenet"
-# Pinned revision: upstream changes must never silently reorder the pool (ADR 0002).
-MINI_IMAGENET_REVISION = "bd8779f9d33c061ea6e75fdd3bce4e43dd679060"
-
-
-def labels_fingerprint(labels):
-    """Stable fingerprint of a pool's label array; stored in episode files and
-    checked against feature caches at evaluation time to catch misalignment."""
-    import hashlib
-
-    arr = np.ascontiguousarray(np.asarray(labels, dtype=np.int64))
-    return f"{len(arr)}:{hashlib.sha256(arr.tobytes()).hexdigest()[:16]}"
+SPLITS = ("train", "val", "test")
 
 
 class Pool:
-    """Uniform dataset view: get_image(i) -> PIL RGB, labels -> np.int64 array."""
+    """Uniform view of one dataset split: get_image(i) -> PIL RGB, labels, class_names."""
 
     def __init__(self, name, split, get_image, labels, class_names):
         self.name = name
@@ -47,170 +47,117 @@ class Pool:
         return self._get_image(int(i))
 
 
-def _torchvision_pool(dataset_name, split):
+def labels_fingerprint(labels):
+    """Stable fingerprint of a split's label array; stored in subset files and
+    checked against feature caches so a dataset change fails loudly."""
+    arr = np.ascontiguousarray(np.asarray(labels, dtype=np.int64))
+    return f"{len(arr)}:{hashlib.sha256(arr.tobytes()).hexdigest()[:16]}"
+
+
+def _flowers_class_names():
+    with open(repo_path("config", "flowers102_classes.json"), encoding="utf-8-sig") as f:
+        names = json.load(f)["classes"]
+    assert len(names) == 102, f"expected 102 Flowers-102 class names, got {len(names)}"
+    return names
+
+
+def load_pool(dataset, split, download=True):
+    """Official split of one dataset as a Pool. split in {'train','val','test'}."""
     from torchvision import datasets as tvd
 
+    assert split in SPLITS, split
+    cfg = load_config()["datasets"][dataset]
     root = str(repo_path(load_config()["paths"]["data_root"]))
-    train = split == "train"
-    if dataset_name == "mnist":
-        ds = tvd.MNIST(root, train=train, download=True)
-        class_names = [str(d) for d in range(10)]
-        get_image = lambda i: ds[i][0].convert("RGB")  # 1-channel -> 3-channel
-    elif dataset_name == "cifar10":
-        ds = tvd.CIFAR10(root, train=train, download=True)
+
+    if dataset == "dtd":
+        ds = tvd.DTD(root, split=split, partition=cfg["partition"], download=download)
+        class_names = [c.replace("_", " ") for c in ds.classes]
+        labels = list(ds._labels)
+    elif dataset == "fgvc_aircraft":
+        ds = tvd.FGVCAircraft(root, split=split,
+                              annotation_level=cfg["annotation_level"], download=download)
         class_names = list(ds.classes)
-        get_image = lambda i: ds[i][0].convert("RGB")
+        labels = list(ds._labels)
+    elif dataset == "flowers102":
+        ds = tvd.Flowers102(root, split=split, download=download)
+        class_names = _flowers_class_names()
+        labels = list(ds._labels)
     else:
-        raise ValueError(dataset_name)
-    labels = [int(ds[i][1]) for i in range(len(ds))]
-    return Pool(dataset_name, split, get_image, labels, class_names)
+        raise ValueError(dataset)
 
+    assert len(class_names) == cfg["n_classes"], \
+        f"{dataset}/{split}: {len(class_names)} classes, expected {cfg['n_classes']}"
 
-def load_mini_imagenet_splits():
-    """Canonical Ravi & Larochelle 64/16/20 class split: {split: {wnid: readable name}}."""
-    with open(repo_path("config", "mini_imagenet_splits.json"), encoding="utf-8-sig") as f:
-        return json.load(f)
+    def get_image(i):
+        return ds[i][0].convert("RGB")
 
-
-def _mini_imagenet_pool(split):
-    """Mini-ImageNet pool for one R&L class split ('train'/'val'/'test').
-
-    timm/mini-imagenet ships the 100 classes partitioned by *image* (50k/10k/5k);
-    we merge all images and re-partition by *class* per the canonical few-shot split.
-    Labels are re-indexed 0..C-1 in sorted-wnid order.
-    """
-    from datasets import concatenate_datasets, load_dataset
-
-    class_split = load_mini_imagenet_splits()[split]
-    wnids = sorted(class_split)
-    class_names = [class_split[w] for w in wnids]
-
-    hf = load_dataset(MINI_IMAGENET_HF_ID, revision=MINI_IMAGENET_REVISION)
-    merged = concatenate_datasets([hf[s] for s in hf])
-    hf_names = merged.features["label"].names
-    assert len(hf_names) == 100, f"expected 100 classes, got {len(hf_names)}"
-    wanted = {hf_names.index(w): new for new, w in enumerate(wnids)}
-
-    hf_labels = np.asarray(merged["label"])
-    keep = np.flatnonzero(np.isin(hf_labels, list(wanted)))
-    merged = merged.select(keep)
-    labels = [wanted[int(l)] for l in hf_labels[keep]]
-
-    get_image = lambda i: merged[i]["image"].convert("RGB")
-    return Pool("mini_imagenet", split, get_image, labels, class_names)
-
-
-def load_pool(dataset_name, split):
-    """split: 'train'/'test' for mnist & cifar10; 'train'/'val'/'test' (class splits) for mini_imagenet."""
-    if dataset_name in ("mnist", "cifar10"):
-        return _torchvision_pool(dataset_name, split)
-    if dataset_name == "mini_imagenet":
-        return _mini_imagenet_pool(split)
-    raise ValueError(dataset_name)
+    return Pool(dataset, split, get_image, labels, class_names)
 
 
 # --------------------------------------------------------------------------- #
-# Episode / support-set sampling (saved to disk, ADR 0002)
+# Balanced K-shot training subsets (sampled from the official train split only)
 # --------------------------------------------------------------------------- #
 
-def episodes_dir():
-    d = repo_path(load_config()["paths"]["artifacts_dir"], "episodes")
+def subsets_dir():
+    d = repo_path(load_config()["paths"]["artifacts_dir"], "subsets")
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
-def episodic_path(dataset, n_way, k_shot, seed):
-    return episodes_dir() / f"{dataset}_ep_{n_way}w{k_shot}s_seed{seed}.pt"
+def subset_path(dataset, k_shot, seed):
+    return subsets_dir() / f"{dataset}_k{k_shot}_seed{seed}.pt"
 
 
-def simple_path(dataset, k_shot, seed):
-    return episodes_dir() / f"{dataset}_simple_{k_shot}s_seed{seed}.pt"
+def sample_balanced_subset(labels, k_shot, seed):
+    """K training indices per class, sampled without replacement from the train split.
 
-
-def selection_path(dataset, n_way, k_shot, seed):
-    """Validation-selection episodes (disjoint from test episodes by pool and seed):
-    MNIST/CIFAR-10 sampled from the train split, Mini-ImageNet from the R&L val classes."""
-    return episodes_dir() / f"{dataset}_valsel_{n_way}w{k_shot}s_seed{seed}.pt"
-
-
-def ensure_selection_episodes(dataset, labels):
-    """Create the validation-selection episode files from a label array if missing.
-    `labels` must come from the selection pool (train split / val classes)."""
-    cfg = load_config()
-    ep, sel = cfg["episodic"], cfg["selection"]
-    paths = []
-    for k in ep["shots"]:
-        path = selection_path(dataset, ep["n_way"], k, sel["seed"])
-        if not path.exists():
-            torch.save(sample_episodes(labels, ep["n_way"], k, ep["n_query"],
-                                       sel["n_episodes"], sel["seed"]), path)
-        paths.append(path)
-    return paths
-
-
-def sample_episodes(labels, n_way, k_shot, n_query, n_episodes, seed):
-    """Disjoint support/query index tensors for n_episodes N-way K-shot episodes."""
-    rng = np.random.default_rng(seed)
-    labels = np.asarray(labels)
-    classes = np.unique(labels)
-    by_class = {c: np.flatnonzero(labels == c) for c in classes}
-    ep_classes = np.empty((n_episodes, n_way), dtype=np.int64)
-    support = np.empty((n_episodes, n_way * k_shot), dtype=np.int64)
-    query = np.empty((n_episodes, n_way * n_query), dtype=np.int64)
-    for e in range(n_episodes):
-        cls = rng.choice(classes, size=n_way, replace=False)
-        ep_classes[e] = cls
-        for j, c in enumerate(cls):
-            pick = rng.choice(by_class[c], size=k_shot + n_query, replace=False)
-            support[e, j * k_shot:(j + 1) * k_shot] = pick[:k_shot]
-            query[e, j * n_query:(j + 1) * n_query] = pick[k_shot:]
-    return {
-        "classes": torch.from_numpy(ep_classes),
-        "support_idx": torch.from_numpy(support),
-        "query_idx": torch.from_numpy(query),
-        "n_way": n_way, "k_shot": k_shot, "n_query": n_query, "seed": seed,
-        "pool_fingerprint": labels_fingerprint(labels),
-    }
-
-
-def sample_support(labels, k_shot, seed):
-    """All-classes support set (K per class) for the simple protocol; eval uses the full test split."""
-    rng = np.random.default_rng(seed)
-    labels = np.asarray(labels)
-    idx = np.concatenate([
-        rng.choice(np.flatnonzero(labels == c), size=k_shot, replace=False)
-        for c in np.unique(labels)
-    ])
-    return {"support_idx": torch.from_numpy(idx), "k_shot": k_shot, "seed": seed,
-            "pool_fingerprint": labels_fingerprint(labels)}
-
-
-def build_all_episode_files(pools_by_dataset):
-    """Generate every episode/support index file that does not exist yet.
-
-    pools_by_dataset: {dataset: {"episodic": Pool, "simple_train": Pool or None}}.
-    Episodic pools: mnist/cifar10 test split, mini_imagenet R&L test classes.
-    Simple protocol (mnist/cifar10 only): support drawn from the train split.
+    Classes with fewer than K available images contribute all of theirs (recorded
+    in `short_classes` so the report can state it rather than silently truncate).
     """
+    rng = np.random.default_rng(seed)
+    labels = np.asarray(labels)
+    idx, short = [], {}
+    for c in np.unique(labels):
+        pool = np.flatnonzero(labels == c)
+        take = min(k_shot, len(pool))
+        if take < k_shot:
+            short[int(c)] = int(len(pool))
+        idx.append(rng.choice(pool, size=take, replace=False))
+    idx = np.sort(np.concatenate(idx))
+    return {"indices": torch.from_numpy(idx), "k_shot": k_shot, "seed": seed,
+            "short_classes": short, "pool_fingerprint": labels_fingerprint(labels)}
+
+
+def training_indices(dataset, k_shot, seed, train_labels):
+    """Indices into the official train split for one (K, seed) setting.
+
+    k_shot == 'full' uses the complete official training split (seed irrelevant).
+    Otherwise the saved balanced subset is loaded, or created on first use.
+    """
+    if k_shot == "full":
+        return torch.arange(len(train_labels))
+    path = subset_path(dataset, k_shot, seed)
+    if not path.exists():
+        torch.save(sample_balanced_subset(train_labels, k_shot, seed), path)
+    d = torch.load(path, weights_only=True)
+    actual = labels_fingerprint(train_labels)
+    assert d["pool_fingerprint"] == actual, (
+        f"{path.name}: subset was sampled from train pool {d['pool_fingerprint']} "
+        f"but the current train split is {actual} — regenerate the subsets")
+    return d["indices"]
+
+
+def build_all_subsets(train_labels_by_dataset):
+    """Create every K-shot subset file that does not exist yet."""
     cfg = load_config()
-    ep, si = cfg["episodic"], cfg["simple"]
     created = []
-    for ds, pools in pools_by_dataset.items():
-        pool = pools["episodic"]
-        for k in ep["shots"]:
-            path = episodic_path(ds, ep["n_way"], k, ep["seed"])
-            if not path.exists():
-                data = sample_episodes(pool.labels, ep["n_way"], k, ep["n_query"],
-                                       ep["n_episodes"], ep["seed"])
-                torch.save(data, path)
-                created.append(path.name)
-        train_pool = pools.get("simple_train")
-        if train_pool is None:
-            continue
-        for k in si["shots"]:
-            for seed in si["seeds"]:
-                path = simple_path(ds, k, seed)
+    for ds, labels in train_labels_by_dataset.items():
+        for k in cfg["shots"]:
+            if k == "full":
+                continue
+            for seed in cfg["subset_seeds"]:
+                path = subset_path(ds, k, seed)
                 if not path.exists():
-                    torch.save(sample_support(train_pool.labels, k, seed), path)
+                    torch.save(sample_balanced_subset(labels, k, seed), path)
                     created.append(path.name)
     return created

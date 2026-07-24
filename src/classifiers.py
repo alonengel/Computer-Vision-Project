@@ -1,156 +1,143 @@
-"""Few-shot classifier heads over frozen embeddings.
+"""Classification heads over frozen cached features (spec: `_docs/stage_1.pdf`).
 
-Common interface — predict(Xs, ys, Xq) -> scores:
-  Xs [B, S, D] support embeddings, ys [B, S] support labels in 0..C-1,
-  Xq [B, Q, D] query embeddings; returns scores [B, Q, C] (argmax = prediction).
-B is the episode batch (B=1 for the simple protocol). All heads are pure torch and
-differentiable, so stage 2/3 can insert a Flow Matching module upstream unchanged.
+  LinearProbe        required baseline — s = W z + b, softmax cross-entropy,
+                     AdamW, checkpoint selected by highest validation accuracy.
+  PrototypeClassifier  branch A — image-derived class prototypes:
+                     mu_c = normalize( mean_{i in S_c} normalize(z_i) ),
+                     y = argmax_c cos(z, mu_c).
+  ZeroShotCLIP       branch B — text-derived class prototypes from CLIP RN50:
+                     y = argmax_c cos(z, t_c), no labeled training images.
 """
+import copy
+
 import torch
 import torch.nn.functional as F
 
-from .utils import load_config
-
-
-def _prototypes(Xs, ys, n_classes):
-    """Class-mean prototypes [B, C, D] from support embeddings."""
-    B, S, D = Xs.shape
-    proto = torch.zeros(B, n_classes, D, device=Xs.device, dtype=Xs.dtype)
-    count = torch.zeros(B, n_classes, 1, device=Xs.device, dtype=Xs.dtype)
-    proto.scatter_add_(1, ys.unsqueeze(-1).expand(-1, -1, D), Xs)
-    count.scatter_add_(1, ys.unsqueeze(-1), torch.ones(B, S, 1, device=Xs.device, dtype=Xs.dtype))
-    return proto / count.clamp(min=1)
-
-
-class PrototypeClassifier:
-    """Nearest class-mean. metric: 'cosine' (primary) or 'euclidean' (ablation)."""
-
-    def __init__(self, metric="cosine"):
-        assert metric in ("cosine", "euclidean")
-        self.metric = metric
-
-    def predict(self, Xs, ys, Xq):
-        n_classes = int(ys.max().item()) + 1
-        proto = _prototypes(Xs, ys, n_classes)
-        if self.metric == "cosine":
-            return F.normalize(Xq, dim=-1) @ F.normalize(proto, dim=-1).transpose(1, 2)
-        return -torch.cdist(Xq, proto).pow(2)
+from .utils import get_device, load_config
 
 
 class LinearProbe:
-    """Linear head (weights + bias, as in nn.Linear) trained with CrossEntropyLoss
-    + Adam on the support set.
+    """Multiclass linear classifier trained on frozen features.
 
-    Training is vectorized over the episode batch: weights [B, C, D] are optimized
-    jointly with one Adam instance. The loss uses reduction='sum' scaled by 1/S, so
-    ∂L/∂W_b equals each episode's own mean-CE gradient — exactly equivalent to B
-    independent heads (same gradients, same per-parameter Adam state and weight
-    decay), but hundreds of times faster for 600-episode evaluation. Init is
-    0.01·N(0,1) (fixed a priori), not nn.Linear's default Kaiming-uniform.
-    `as_module()` returns a plain nn.Linear carrying one episode's weights for
-    stage-3 end-to-end use.
+    Only W and b are trained. Defaults come from config/config.json, which holds
+    the spec's suggested configuration (AdamW, lr 1e-3, weight decay 1e-4,
+    batch size 64, max 200 epochs, checkpoint = highest validation accuracy).
+    `fit` records per-epoch training and validation loss so the training curves
+    can be plotted, and restores the best-validation-accuracy weights at the end.
     """
 
-    def __init__(self, steps=None, lr=None, weight_decay=None, seed=0):
-        cfg = load_config()["linear_probe"]
-        self.steps = steps if steps is not None else cfg["steps"]
-        self.lr = lr if lr is not None else cfg["lr"]
-        self.weight_decay = weight_decay if weight_decay is not None else cfg["weight_decay"]
+    def __init__(self, n_classes, dim, seed=0, **overrides):
+        cfg = {**load_config()["linear_probe"], **overrides}
+        self.cfg = cfg
+        self.n_classes = n_classes
+        self.dim = dim
         self.seed = seed
-        self.W = self.b = None
+        self.device = get_device()
+        g = torch.Generator().manual_seed(seed)
+        self.model = torch.nn.Linear(dim, n_classes)
+        with torch.no_grad():  # seeded reinit so init_seed is meaningful
+            bound = 1.0 / dim ** 0.5
+            self.model.weight.copy_((torch.rand(n_classes, dim, generator=g) * 2 - 1) * bound)
+            self.model.bias.copy_((torch.rand(n_classes, generator=g) * 2 - 1) * bound)
+        self.model = self.model.to(self.device)
+        self.history = None
+        self.best = None
 
-    def fit(self, Xs, ys, W0=None):
-        B, S, D = Xs.shape
-        n_classes = int(ys.max().item()) + 1
-        if W0 is None:
-            g = torch.Generator(device="cpu").manual_seed(self.seed)
-            W0 = 0.01 * torch.randn(B, n_classes, D, generator=g)
-        W = W0.to(Xs.device).clone().requires_grad_(True)
-        b = torch.zeros(B, n_classes, device=Xs.device, requires_grad=True)
-        opt = torch.optim.Adam([W, b], lr=self.lr, weight_decay=self.weight_decay)
-        flat_ys = ys.reshape(-1)
-        for _ in range(self.steps):
-            opt.zero_grad()
-            logits = torch.einsum("bsd,bcd->bsc", Xs, W) + b.unsqueeze(1)
-            # sum/S = per-episode mean CE summed over episodes -> each episode's
-            # head gets exactly its independent-head gradient (not scaled by 1/B)
-            loss = F.cross_entropy(logits.reshape(B * S, n_classes), flat_ys,
-                                   reduction="sum") / S
-            loss.backward()
-            opt.step()
-        self.W, self.b = W.detach(), b.detach()
+    def fit(self, Xtr, ytr, Xval, yval):
+        cfg = self.cfg
+        dev = self.device
+        Xtr, ytr = Xtr.to(dev), ytr.to(dev)
+        Xval, yval = Xval.to(dev), yval.to(dev)
+        opt = torch.optim.AdamW(self.model.parameters(), lr=cfg["lr"],
+                                weight_decay=cfg["weight_decay"])
+        g = torch.Generator(device="cpu").manual_seed(self.seed)
+        n, bs = len(Xtr), cfg["batch_size"]
+        hist = {"epoch": [], "train_loss": [], "val_loss": [], "val_acc": []}
+        best_acc, best_state, best_epoch = -1.0, None, -1
+
+        for epoch in range(cfg["max_epochs"]):
+            self.model.train()
+            perm = torch.randperm(n, generator=g).to(dev)
+            total = 0.0
+            for s in range(0, n, bs):
+                idx = perm[s:s + bs]
+                opt.zero_grad()
+                loss = F.cross_entropy(self.model(Xtr[idx]), ytr[idx])
+                loss.backward()
+                opt.step()
+                total += loss.item() * len(idx)
+            self.model.eval()
+            with torch.no_grad():
+                logits = self.model(Xval)
+                val_loss = F.cross_entropy(logits, yval).item()
+                val_acc = (logits.argmax(-1) == yval).float().mean().item()
+            hist["epoch"].append(epoch)
+            hist["train_loss"].append(total / n)
+            hist["val_loss"].append(val_loss)
+            hist["val_acc"].append(val_acc)
+            if val_acc > best_acc:  # checkpoint selection: highest validation accuracy
+                best_acc, best_epoch = val_acc, epoch
+                best_state = copy.deepcopy(self.model.state_dict())
+
+        self.model.load_state_dict(best_state)
+        self.model.eval()
+        self.history = hist
+        self.best = {"val_acc": best_acc, "epoch": best_epoch}
         return self
 
-    def predict(self, Xs, ys, Xq):
-        self.fit(Xs, ys)  # always refit: no silent reuse of stale weights
-        return torch.einsum("bqd,bcd->bqc", Xq, self.W) + self.b.unsqueeze(1)
-
-    def as_module(self, episode=0):
-        import torch.nn as nn
-
-        C, D = self.W.shape[1], self.W.shape[2]
-        lin = nn.Linear(D, C)
-        with torch.no_grad():
-            lin.weight.copy_(self.W[episode])
-            lin.bias.copy_(self.b[episode])
-        return lin
+    @torch.no_grad()
+    def predict(self, X):
+        self.model.eval()
+        return self.model(X.to(self.device)).argmax(-1).cpu()
 
 
-class KMeansPrototype:
-    """Multi-prototype head: n_centers spherical k-means centers per class,
-    computed from that class's SUPPORT embeddings only (query data never enters
-    clustering). A query is scored by the maximum cosine similarity over a
-    class's centers. n_centers=1 is exactly the cosine prototype classifier.
+class PrototypeClassifier:
+    """Image-derived class prototypes (branch A), exactly as specified:
 
-    Deterministic: centers are initialized from the first min(n_centers, K)
-    support points of each class (support order is already episode-random),
-    then refined with n_iters spherical k-means updates. Empty clusters keep
-    their previous center.
+    mu_c = normalize( (1/|S_c|) * sum_{i in S_c} normalize(z_i) )
+    y_hat = argmax_c cos(z, mu_c)
+
+    Prototypes are computed from the selected training subset only.
     """
 
-    def __init__(self, n_centers, n_iters=10):
-        self.n_centers = n_centers
-        self.n_iters = n_iters
+    def __init__(self, n_classes):
+        self.n_classes = n_classes
+        self.prototypes = None
 
-    def _class_centers(self, pts):
-        """pts [K, D] (one class's support) -> [m, D] normalized centers."""
-        pts = F.normalize(pts, dim=-1)
-        m = min(self.n_centers, pts.shape[0])
-        centers = pts[:m].clone()
-        for _ in range(self.n_iters):
-            assign = (pts @ centers.T).argmax(dim=1)  # [K]
-            for j in range(m):
-                mask = assign == j
-                if mask.any():
-                    centers[j] = F.normalize(pts[mask].mean(0), dim=-1)
-        return centers
+    def fit(self, Xtr, ytr):
+        Z = F.normalize(Xtr.float(), dim=-1)
+        protos = []
+        for c in range(self.n_classes):
+            mask = ytr == c
+            assert bool(mask.any()), f"class {c} has no training samples in this subset"
+            protos.append(F.normalize(Z[mask].mean(0), dim=-1))
+        self.prototypes = torch.stack(protos)
+        return self
 
-    def predict(self, Xs, ys, Xq):
-        B = Xs.shape[0]
-        n_classes = int(ys.max().item()) + 1
-        Xq_n = F.normalize(Xq, dim=-1)
-        scores = torch.empty(B, Xq.shape[1], n_classes, device=Xq.device, dtype=Xq.dtype)
-        for b in range(B):
-            for c in range(n_classes):
-                centers = self._class_centers(Xs[b][ys[b] == c])
-                scores[b, :, c] = (Xq_n[b] @ centers.T).max(dim=1).values
-        return scores
+    @torch.no_grad()
+    def predict(self, X):
+        Z = F.normalize(X.float(), dim=-1)
+        return (Z @ self.prototypes.T).argmax(-1)
+
+    def scores(self, X):
+        Z = F.normalize(X.float(), dim=-1)
+        return Z @ self.prototypes.T
 
 
 class ZeroShotCLIP:
-    """Image-text cosine similarity against cached CLIP text embeddings.
+    """Text-derived class prototypes (branch B): y_hat = argmax_c cos(z, t_c).
 
-    text_emb [C_all, D] must be L2-normalized (primary or ensemble variant).
-    Support data is ignored (zero-shot); `class_subset` restricts scoring to the
-    episode's classes, in episode label order.
+    `text_prototypes` [C, D] must be L2-normalized. Uses no labeled training images.
     """
 
-    def __init__(self, text_emb):
-        self.text_emb = text_emb
+    def __init__(self, text_prototypes):
+        self.prototypes = text_prototypes.float()
 
-    def predict(self, Xs, ys, Xq, class_subset=None):
-        text = self.text_emb.to(Xq.device, Xq.dtype)
-        if class_subset is not None:
-            text = text[class_subset]  # [B, C, D] via advanced indexing
-            return F.normalize(Xq, dim=-1) @ F.normalize(text, dim=-1).transpose(1, 2)
-        return F.normalize(Xq, dim=-1) @ F.normalize(text, dim=-1).T
+    @torch.no_grad()
+    def predict(self, X):
+        Z = F.normalize(X.float(), dim=-1)
+        return (Z @ self.prototypes.T).argmax(-1)
+
+    def scores(self, X):
+        Z = F.normalize(X.float(), dim=-1)
+        return Z @ self.prototypes.T
