@@ -91,7 +91,8 @@ def accuracy_vs_trainsize(dataset, summary, name=None):
     ax.set_xlabel("training images per class (K)")
     ax.set_ylabel("top-1 test accuracy (%)")
     ax.set_title(f"{dataset_label(dataset)}: accuracy vs. training-set size\n"
-                 "(error bars: ± std over 3 runs)", fontsize=13)
+                 "(error bars: ± sample std over 3 runs; the full-split prototype and\n"
+                 "the zero-shot points are single deterministic runs)", fontsize=12)
     ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=10.5, frameon=True)
     return _save(fig, name or f"acc_vs_trainsize_{dataset}.png")
 
@@ -102,21 +103,33 @@ def accuracy_vs_trainsize(dataset, summary, name=None):
 
 def training_curves(panels, name, suptitle):
     """panels: list of dicts with 'dataset', 'encoder', 'history' (train/val loss+acc)."""
-    fig, axes = plt.subplots(1, len(panels), figsize=(5.6 * len(panels), 4.6), squeeze=False)
+    fig, axes = plt.subplots(1, len(panels), figsize=(6.4 * len(panels), 4.6), squeeze=False)
     for ax, p in zip(axes[0], panels):
         h = p["history"]
         ax.plot(h["epoch"], h["train_loss"], label="training loss", color="#0173B2", lw=2)
         ax.plot(h["epoch"], h["val_loss"], label="validation loss", color="#D55E00", lw=2)
         best = int(np.argmax(h["val_acc"]))
         ax.axvline(best, color="gray", linestyle="--", lw=1.4)
+        late = best > 0.6 * len(h["epoch"])  # keep the label inside the axes
         ax.annotate(f"checkpoint\n(best val acc, ep {best})", xy=(best, ax.get_ylim()[1]),
-                    xytext=(6, -8), textcoords="offset points", fontsize=9,
-                    va="top", color="gray")
+                    xytext=(-6 if late else 6, -8), textcoords="offset points", fontsize=9,
+                    va="top", ha="right" if late else "left", color="gray")
         ax.set_title(f"{dataset_label(p['dataset'])} — {encoder_label(p['encoder'], short=True)}",
                      fontsize=12)
         ax.set_xlabel("epoch")
+        # Validation accuracy on a twin axis: the checkpoint is selected on this
+        # curve, and it can keep rising while the validation loss already grows.
+        ax2 = ax.twinx()
+        ax2.plot(h["epoch"], [100 * v for v in h["val_acc"]], color="#029E73",
+                 lw=1.8, linestyle=":", label="validation accuracy")
+        ax2.set_ylabel("validation accuracy (%)", color="#029E73", fontsize=11)
+        ax2.tick_params(axis="y", labelcolor="#029E73")
+        ax2.grid(False)
     axes[0][0].set_ylabel("cross-entropy loss")
-    axes[0][0].legend(fontsize=10, loc="best")
+    handles, labels_ = axes[0][0].get_legend_handles_labels()
+    handles.append(plt.Line2D([], [], color="#029E73", lw=1.8, linestyle=":"))
+    labels_.append("validation accuracy")
+    axes[0][0].legend(handles, labels_, fontsize=9.5, loc="center right")
     fig.suptitle(suptitle, y=1.04, fontsize=13.5)
     fig.tight_layout()
     return _save(fig, name)
@@ -138,10 +151,17 @@ def confusion(cm, class_names, title, name, top_confusions=None):
     ax.set_xlabel("predicted class"); ax.set_ylabel("true class")
     ax.set_title(title, fontsize=12)
     n = len(class_names)
-    step = max(1, n // 20)
-    ticks = np.arange(0, n, step)
-    ax.set_xticks(ticks); ax.set_yticks(ticks)
-    ax.set_xticklabels(ticks, fontsize=8); ax.set_yticklabels(ticks, fontsize=8)
+    if n <= 50:  # class names still legible — far easier to read than indices
+        ticks = np.arange(n)
+        ax.set_xticks(ticks); ax.set_yticks(ticks)
+        ax.set_xticklabels(class_names, fontsize=6, rotation=90)
+        ax.set_yticklabels(class_names, fontsize=6)
+    else:
+        step = max(1, n // 20)
+        ticks = np.arange(0, n, step)
+        ax.set_xticks(ticks); ax.set_yticks(ticks)
+        ax.set_xticklabels(ticks, fontsize=8); ax.set_yticklabels(ticks, fontsize=8)
+        ax.set_xlabel("predicted class (index)"); ax.set_ylabel("true class (index)")
     fig.colorbar(im, ax=ax, fraction=0.046, label="fraction of true-class test images")
 
     axes[1].axis("off")
@@ -166,14 +186,18 @@ def feature_projection(panels, class_names, title, name):
     (done by the caller), so prototype positions are comparable to the points.
     Colours are fixed per class index across every panel and figure.
     """
-    palette = sns.color_palette("tab10", n_colors=max(10, len(class_names)))
+    # Colourblind-safe palette; marker shape also varies so class identity does
+    # not rest on hue alone.
+    palette = sns.color_palette("colorblind", n_colors=max(10, len(class_names)))
+    markers = ["o", "s", "^", "D", "v", "P", "X", "<", ">", "*"]
     fig, axes = plt.subplots(1, len(panels), figsize=(6.4 * len(panels), 6.0), squeeze=False)
     for ax, p in zip(axes[0], panels):
         labels = np.asarray(p["labels"])
         for j, c in enumerate(sorted(np.unique(labels))):
             m = labels == c
-            ax.scatter(p["xy"][m, 0], p["xy"][m, 1], s=16, alpha=0.6,
-                       color=palette[j], label=class_names[j])
+            ax.scatter(p["xy"][m, 0], p["xy"][m, 1], s=18, alpha=0.65,
+                       color=palette[j], marker=markers[j % len(markers)],
+                       label=class_names[j])
             if p.get("proto_xy") is not None:
                 ax.scatter(p["proto_xy"][j, 0], p["proto_xy"][j, 1], marker="*", s=430,
                            color=palette[j], edgecolors="black", linewidths=1.3, zorder=5)

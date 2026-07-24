@@ -61,16 +61,18 @@ def curve_charts():
 
 
 def confusion_charts():
-    """One row-normalized confusion matrix per dataset, for the best full-data
-    linear-probe setting on that dataset (the most informative error picture)."""
-    s = summary()
-    for ds, g in s.groupby("dataset"):
-        best = (g[(g["head"] == "linear_probe") & (g["k_shot"] == "full")]
-                .sort_values("mean_acc", ascending=False).iloc[0])
-        enc = best["encoder"]
+    """One row-normalized confusion matrix per dataset, for the full-split linear
+    probe on that dataset's best encoder. The encoder is chosen by **validation**
+    accuracy (never test), and the title reports the accuracy of the run actually
+    plotted rather than the 3-seed mean."""
+    runs = pd.read_csv(metrics_dir() / "runs.csv")
+    for ds, g in runs.groupby("dataset"):
+        cand = g[(g["head"] == "linear_probe") & (g["k_shot"] == "full")]
+        enc = (cand.groupby("encoder")["val_acc"].mean().idxmax())
         pred, target = load_predictions(f"run_{ds}_{enc}_linear_probe_full")
         names = load_features(ds, "test", enc)["class_names"]
         cm = row_normalized_confusion(pred, target, len(names))
+        plotted_acc = float((np.asarray(pred) == np.asarray(target)).mean())
         off = cm.copy()
         np.fill_diagonal(off, 0.0)
         flat = np.dstack(np.unravel_index(np.argsort(off, axis=None)[::-1], off.shape))[0]
@@ -79,7 +81,7 @@ def confusion_charts():
             cm, names,
             f"{dataset_label(ds)} — row-normalized confusion matrix\n"
             f"linear probe, full training split, {encoder_label(enc, short=True)} "
-            f"(top-1 {100 * best['mean_acc']:.1f}%)",
+            f"(plotted run: top-1 {100 * plotted_acc:.2f}%)",
             f"confusion_{ds}.png", top_confusions=top))
 
 
@@ -99,7 +101,7 @@ def viz_selection(dataset, n_classes, class_seed, max_per_class):
     return classes, np.sort(np.concatenate(idx))
 
 
-def _project(X, n_proto, seed=0):
+def _project(X, seed=0):
     """Return {'PCA': xy, 't-SNE': xy}, each fitted JOINTLY to features+prototypes."""
     from sklearn.decomposition import PCA
     from sklearn.manifold import TSNE
@@ -133,14 +135,15 @@ def feature_charts():
                 proto_kind = "text prototypes"
             else:
                 ftr = load_features(ds, "train", enc)
-                tr_idx = training_indices(ds, "full", 0, ftr["labels"].numpy())
+                tr_idx = training_indices(ds, "full", 0, ftr["labels"].numpy(),
+                                          fingerprint=ftr.get("pool_fingerprint"))
                 p = PrototypeClassifier(len(names_all)).fit(
                     ftr["features"][tr_idx], ftr["labels"][tr_idx].long())
                 protos = p.prototypes[classes]
                 proto_kind = "image prototypes (full training split)"
 
             stacked = torch.cat([X, protos]).numpy()
-            proj = _project(stacked, len(protos))
+            proj = _project(stacked)
             panels = [{"title": f"{method} — {encoder_label(enc, short=True)}",
                        "xy": xy[:len(X)], "labels": y, "proto_xy": xy[len(X):]}
                       for method, xy in proj.items()]

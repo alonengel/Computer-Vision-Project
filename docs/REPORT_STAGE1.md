@@ -72,14 +72,16 @@ Every reported number is **top-1 accuracy on the complete official test split**.
 
 | Setting | The 3 runs vary | Held fixed | Reported as |
 |---|---|---|---|
-| 5-shot, 10-shot | balanced-subset seed ∈ {0,1,2} | classifier initialization | mean ± std |
-| full — linear probe | initialization seed ∈ {0,1,2} | training set | mean ± std |
+| 5-shot, 10-shot | balanced-subset seed ∈ {0,1,2} | classifier seed (initialization and batch order) | mean ± std |
+| full — linear probe | classifier seed ∈ {0,1,2}, driving both weight initialization and minibatch ordering | training set (the complete official split) | mean ± std |
 | full — image prototypes | — (deterministic) | — | single run |
 | zero-shot CLIP | — (deterministic, no training images) | — | single run |
 
-Each setting therefore has exactly one interpretable source of variance: training-subset sampling at 5/10-shot, initialization at full. Single-run settings are reported without a standard deviation rather than as "± 0.00".
+Each setting therefore has exactly one interpretable source of variance: training-subset sampling at 5/10-shot, and classifier stochasticity at full. Note that one seed governs both the weight initialization and the epoch shuffling, so the "full" spread measures optimization stochasticity as a whole rather than initialization in isolation. Statistics are the sample standard deviation (ddof = 1) over the 3 runs; single-run settings are reported without a standard deviation rather than as "± 0.00".
 
-The validation split is used **only** for linear-probe checkpoint selection. No hyperparameter, encoder, subset, or checkpoint was chosen by observing test accuracy.
+The validation split is used **only** for linear-probe checkpoint selection. No number in the accuracy table was influenced by test accuracy: no hyperparameter, training subset, checkpoint, or encoder used to produce a reported result was chosen by observing the test split, and where a representative encoder had to be picked for a figure it was picked by **validation** accuracy (`scripts/make_figures.py`).
+
+Two presentation decisions are, unavoidably, made *after* the one-time test read-out and are flagged as such rather than hidden: which confusion matrix to display, and the Stage-2 branch recommendation in §4. Neither changes a reported number. For the branch recommendation the validation split tells the same story as the test split — on FGVC-Aircraft the DINOv2 probe leads ResNet-18 on validation by 68.62% vs 38.36%, mirroring the test ordering — so the recommendation does not depend on having seen test results.
 
 ### 2.6 Reproducibility
 
@@ -93,7 +95,7 @@ Every number below is top-1 accuracy (%) on the complete official test split, re
 
 | Dataset | Encoder | Baseline | K = 5 | K = 10 | full train split | no training images |
 |---|---|---|---|---|---|---|
-| DTD | ResNet-18 | Linear probe | 45.60 ± 0.64 | 54.31 ± 0.28 | **62.84 ± 0.45** | — |
+| DTD | ResNet-18 | Linear probe | 45.60 ± 0.64 | **54.31 ± 0.28** | **62.84 ± 0.45** | — |
 | DTD | ResNet-18 | Image prototypes | **46.51 ± 0.64** | 53.37 ± 1.04 | 58.78 | — |
 | DTD | CLIP RN50 | Zero-shot CLIP | — | — | — | 39.79 |
 | FGVC-Aircraft | ResNet-18 | Linear probe | 19.90 ± 1.72 | 27.36 ± 0.83 | 36.62 ± 0.27 | — |
@@ -105,9 +107,34 @@ Every number below is top-1 accuracy (%) on the complete official test split, re
 | Oxford Flowers-102 ‡ | ResNet-18 | Image prototypes | 70.19 ± 0.14 | 75.22 ± 0.00 | 75.22 | — |
 | Oxford Flowers-102 ‡ | CLIP RN50 | Zero-shot CLIP | — | — | — | 63.64 |
 
-5-shot / 10-shot: mean ± std over the 3 training-subset seeds. Full linear probe: mean ± std over the 3 initialization seeds. Full image prototypes and zero-shot CLIP are single deterministic runs. ‡ beyond the spec's required pair. The std of exactly 0.00 at Flowers-102 K = 10 is not rounding: that dataset's official training split holds exactly 10 images per class, so all three 10-shot subsets are the same images.
+**Bold** marks the best supervised configuration in each (dataset, training-set size) column, applied programmatically in `scripts/make_tables.py`; zero-shot CLIP is excluded from that comparison because it uses no training images. 5-shot / 10-shot: mean ± sample standard deviation (ddof = 1) over the 3 training-subset seeds. Full linear probe: same statistic over the 3 initialization seeds. Full image prototypes and zero-shot CLIP are single deterministic runs and carry no spread. ‡ beyond the spec's required pair. The std of exactly 0.00 at Flowers-102 K = 10 is not rounding: that dataset's official training split holds exactly 10 images per class, so all three 10-shot subsets are the same images.
 
-External sanity check: our CLIP RN50 zero-shot numbers (DTD 39.8, FGVC-Aircraft 17.0, Flowers-102 63.6) sit just below the commonly reported values for this checkpoint (≈ 41.7, 19.3, 65.9), consistent with our use of the specification's single prompt rather than a prompt ensemble.
+External sanity check: our CLIP RN50 zero-shot numbers (DTD 39.8, FGVC-Aircraft 17.0, Flowers-102 63.6) sit just below the values commonly reported for this checkpoint (≈ 41.7, 19.3, 65.9; Radford et al., 2021, Table 11, and the prompt-ensemble notebook in the official CLIP repository), consistent with our use of the specification's single prompt rather than an ensemble of 80.
+
+**Paired head comparison.** At a given (dataset, encoder, K) the two supervised heads are trained on the *same* committed subset indices and evaluated on the same test split, so their per-seed differences are matched and much tighter than the marginal spreads above. Generated into `results/metrics/paired_heads_table.md`:
+
+| Dataset | Encoder | K | Prototypes − probe (paired) | Seeds favouring prototypes |
+|---|---|---|---|---|
+| DTD | ResNet-18 | 5 | **+0.90 ± 0.14** | 3 / 3 |
+| DTD | ResNet-18 | 10 | −0.94 ± 0.83 | 0 / 3 |
+| FGVC-Aircraft | ResNet-18 | 5 | −3.86 ± 0.95 | 0 / 3 |
+| FGVC-Aircraft | ResNet-18 | 10 | −7.51 ± 1.11 | 0 / 3 |
+| FGVC-Aircraft | DINOv2 | 5 | −13.36 ± 0.81 | 0 / 3 |
+| FGVC-Aircraft | DINOv2 | 10 | −23.49 ± 0.94 | 0 / 3 |
+| Flowers-102 ‡ | ResNet-18 | 5 | −5.39 ± 0.95 | 0 / 3 |
+| Flowers-102 ‡ | ResNet-18 | 10 | −8.00 ± 0.00 | 0 / 3 |
+
+The single prototype win (DTD, K = 5) is +0.90 ± 0.14 with all three seeds agreeing in sign — a far stronger statement than the overlapping marginal intervals 46.51 ± 0.64 vs 45.60 ± 0.64 would support on their own. The `full` setting is excluded because the prototype head runs once there while the probe varies only by initialization, so those runs are not paired.
+
+**Balanced accuracy.** Flowers-102's official test split is class-imbalanced (20–238 images per class), so its image-weighted top-1 and its per-class macro accuracy differ; DTD and FGVC-Aircraft have balanced test splits and are unaffected (`results/metrics/macro_accuracy_table.md`):
+
+| Dataset | Encoder | Top-1 (%) | Balanced / macro (%) |
+|---|---|---|---|
+| DTD | ResNet-18 | 63.35 | 63.35 |
+| FGVC-Aircraft | DINOv2 | 67.09 | 67.07 |
+| Flowers-102 ‡ | ResNet-18 | 83.22 | 85.38 |
+
+The specification asks for plain top-1, which is what the main table reports; this is supplementary and matters only when comparing the top-1 figure with the row-normalized (per-class) confusion matrix of Figure 8.
 
 ### 3.2 Accuracy versus training-set size
 
@@ -128,12 +155,21 @@ External sanity check: our CLIP RN50 zero-shot numbers (DTD 39.8, FGVC-Aircraft 
 
 A detail worth noting in Figure 5 (FGVC-Aircraft / DINOv2): validation *loss* rises from about epoch 25 onward, yet the best validation *accuracy* occurs at epoch 187. Loss and accuracy diverge because the probe becomes increasingly over-confident on the examples it already gets wrong — cross-entropy penalises that, top-1 accuracy does not. Selecting on accuracy, as the specification requires, is therefore not the same as selecting on loss.
 
-**Is the 200-epoch budget adequate?** 8 of the 36 probe runs reach their best validation accuracy at epoch ≥ 190, so the cap is mildly binding. Inspecting the saved curves, validation accuracy gains over the last 100 epochs are +0.63 (FGVC/DINOv2), +0.81 (FGVC/ResNet-18) and +0.98 (Flowers-102) points, i.e. within roughly one point of the plateau and comparable to the run-to-run spread. The suggested configuration therefore behaves reasonably and was **kept unchanged**; no deviation is reported.
+**Is the 200-epoch budget adequate?** 8 of the 36 probe runs reach their best validation accuracy at epoch ≥ 190, so the cap is mildly binding — though 4 of those 8 are the three duplicated Flowers-102 10-shot runs plus one Flowers-102 full run, i.e. the degenerate dataset. To quantify the residual head-room we define the late-training drift as *validation accuracy at the final epoch minus validation accuracy at epoch 100*, measured on the four representative 10-shot curves that are saved in full (`results/artifacts/curves/`; curves are stored only for those runs):
+
+| Curve | Drift over the last 100 epochs | Best epoch |
+|---|---|---|
+| DTD — ResNet-18 | −0.21 | 31 |
+| FGVC-Aircraft — ResNet-18 | +0.81 | 195 |
+| FGVC-Aircraft — DINOv2 | +0.63 | 187 |
+| Flowers-102 ‡ — ResNet-18 | +0.98 | 199 |
+
+Every value is within about one accuracy point of the plateau, and comparable to the run-to-run spread of the corresponding setting (e.g. ± 1.72 for FGVC-Aircraft/ResNet-18 at K = 5). DTD in fact drifts slightly *downward*, having peaked at epoch 31. The suggested configuration therefore behaves reasonably at every training-set size and was **kept unchanged**; no deviation from the specification is reported.
 
 ### 3.4 Confusion matrices
 
 ![Figure 6](../results/figures/confusion_dtd.png)
-*Figure 6 — DTD, row-normalized, best full-split linear probe. Errors are concentrated in semantically adjacent texture pairs: dotted → polka-dotted (40% of that class's test images), polka-dotted → dotted (25%), lined → banded (22%), grid → meshed (20%), stained → marbled (20%).*
+*Figure 6 — DTD, row-normalized, full-split linear probe (encoder chosen by validation accuracy; the title reports the accuracy of the plotted run). All six of the most frequent confusions are semantically adjacent texture pairs: dotted → polka-dotted (40% of that class's test images), polka-dotted → dotted (25%), lined → banded (22%), woven → braided (20%), grid → meshed (20%), stained → marbled (20%).*
 
 ![Figure 7](../results/figures/confusion_fgvc_aircraft.png)
 *Figure 7 — FGVC-Aircraft, row-normalized. Confusions concentrate within airframe families (variants of the same aircraft), which is the defining difficulty of this dataset.*
@@ -147,19 +183,19 @@ A detail worth noting in Figure 5 (FGVC-Aircraft / DINOv2): validation *loss* ri
 *Figure 9 — FGVC-Aircraft, DINOv2 features for 10 classes with their image-derived prototypes (stars), PCA and t-SNE, projections fitted jointly to the plotted features and prototypes. Distinctive light aircraft (Cessna 172, DHC-1, Fokker 50) form tight, well-separated clusters, while the Boeing/Airbus narrow- and wide-bodies (737-300, 737-700, 767-300, A320, A340-200) overlap heavily — a direct visual account of where the remaining 33% of errors come from.*
 
 ![Figure 10](../results/figures/features_fgvc_aircraft_resnet18.png)
-*Figure 10 — The same 10 classes, same test images and same colours, with ResNet-18 features. Cluster structure is markedly weaker than in Figure 9, matching the 30-point accuracy gap.*
+*Figure 10 — The same 10 classes, same test images and same colours, with ResNet-18 features. Cluster structure is markedly weaker than in Figure 9. Since both figures draw **image prototypes**, the matching quantity is the prototype-head gap on this dataset (34.41 vs 25.20, i.e. 9.2 points); the corresponding linear-probe gap on the same features is 30.6 points.*
 
-Corresponding figures for the remaining dataset–encoder combinations, including the CLIP panels that show test-image embeddings together with their **text** prototypes, are in `results/figures/features_*.png`.
+Corresponding figures for the remaining dataset–encoder combinations are in `results/figures/features_*.png`, including the CLIP panels that show test-image embeddings together with their **text** prototypes. In those CLIP panels the ten text prototypes cluster tightly together, well away from the image cloud. This is the well-known CLIP *modality gap*: image and text embeddings occupy separate cones of the shared space, so a text prototype never lands inside its image cluster. It does not indicate a broken classifier — zero-shot classification depends only on the *relative* cosine ordering of a query against the text prototypes, not on absolute image–text proximity.
 
 ## 4 · Discussion
 
-**The representation dominates the head.** On FGVC-Aircraft, swapping ResNet-18 for DINOv2 while holding everything else fixed moves the full-split linear probe from 36.62% to 67.21% — a 30.6-point gain, far larger than any difference between heads on a fixed encoder. The sharpest way to state it: the DINOv2 probe trained on **5 images per class** (36.47%) is already as accurate as the ResNet-18 probe trained on the **entire** training split (36.62%). Self-supervised features transfer to fine-grained recognition in a way ImageNet-supervised ResNet-18 features do not, and Figures 9–10 show the reason directly in the feature space.
+**The representation dominates the head.** On FGVC-Aircraft, swapping ResNet-18 for DINOv2 while holding everything else fixed moves the full-split linear probe from 36.62% to 67.21% — a 30.6-point gain, far larger than any difference between heads on a fixed encoder. The sharpest way to state it: the DINOv2 probe trained on **5 images per class** (36.47 ± 0.70) matches, within run-to-run noise, the ResNet-18 probe trained on the **entire** training split (36.62 ± 0.27) — a 0.15-point difference that these three-run spreads cannot resolve. Self-supervised features transfer to fine-grained recognition in a way ImageNet-supervised ResNet-18 features do not, and Figures 9–10 show the reason directly in the feature space.
 
-**Prototypes win only in the low-data regime, and only sometimes.** The image-prototype head beats the linear probe at exactly one setting in the whole grid — DTD at K = 5 (46.51 vs 45.60) — and is beaten everywhere else, by a margin that grows with the training-set size (DTD full: 58.78 vs 62.84; FGVC-Aircraft/DINOv2 full: 34.41 vs 67.21). This is the expected behaviour: a class mean is a well-conditioned estimator when five examples are all one has, but it cannot exploit additional data the way a discriminatively trained boundary can, and it is blind to the fact that some feature directions separate classes better than others. The effect is strongest where classes are entangled — on FGVC-Aircraft the prototype head recovers barely half the probe's accuracy.
+**Prototypes win only in the low-data regime, and only once.** The image-prototype head beats the linear probe at exactly one of the twelve grid cells — DTD at K = 5, paired **+0.90 ± 0.14** with all three seeds agreeing in sign (§3.1). At DTD K = 10 the two heads are **statistically indistinguishable at n = 3** (paired −0.94 ± 0.83; per-seed −1.60 / 0.00 / −1.22, one exact tie, 95% t-interval [−3.01, +1.13] straddling zero). At every remaining cell the probe wins decisively and by a margin that grows with the training-set size, up to −23.49 ± 0.94 on FGVC-Aircraft/DINOv2 at K = 10. This is the expected behaviour: a class mean is a well-conditioned estimator when five examples are all one has, but it cannot exploit additional data the way a discriminatively trained boundary can, and it is blind to the fact that some feature directions separate classes better than others. The effect is strongest where classes are entangled *and* the representation is rich — with DINOv2 features on FGVC-Aircraft the prototype head recovers barely half the probe's accuracy (34.41 vs 67.21), whereas with the weaker ResNet-18 features on the same dataset it retains about 69% of it (25.20 vs 36.62).
 
-**Zero-shot CLIP is a genuinely different trade-off.** It uses no labeled training images at all, and on Flowers-102 (63.64%) it lands within 12 points of a ResNet-18 probe trained on the full split, and above what that probe would achieve with only a couple of images per class. On DTD it reaches 39.79%, below every supervised setting but not by much at K = 5. On FGVC-Aircraft it manages 17.04% — above 5-shot ResNet-18 prototypes (16.04%) — which says more about the difficulty of the task than about CLIP. The pattern is consistent with CLIP's pretraining distribution: flowers and textures are describable in natural language, aircraft *variants* essentially are not ("a photo of a 737-300 aircraft" carries little visual signal).
+**Zero-shot CLIP is a genuinely different trade-off.** It uses no labeled training images at all. On Flowers-102 it reaches 63.64%, within 12 points of a ResNet-18 probe trained on **five images per class** (75.58%) and 19.6 points below that probe trained on the full split (83.28%). On DTD it reaches 39.79%, below every supervised setting though only 5.8 points below the 5-shot probe. On FGVC-Aircraft it manages 17.04% — above 5-shot ResNet-18 prototypes (16.04%) — which says more about the difficulty of the task than about CLIP. The pattern is consistent with CLIP's pretraining distribution: flowers and textures are describable in natural language, aircraft *variants* essentially are not ("a photo of a 737-300 aircraft" carries little visual signal).
 
-**Overfitting is real and is handled by the protocol.** The training curves (Figures 4–5) show the probe driving training loss to zero at every training-set size while validation loss turns upward within a few dozen epochs. Checkpoint selection on validation accuracy is doing substantial work here, and the divergence between validation loss and validation accuracy on FGVC-Aircraft/DINOv2 is a reminder that the two are not interchangeable selection criteria.
+**Overfitting is real where it appears, and the protocol absorbs it.** Full training histories are retained only for the four representative 10-shot runs (`run_experiments.py` saves curves for `K = 10, seed 0`), so the evidence below is scoped to that training-set size. In three of those four — DTD/ResNet-18, FGVC-Aircraft/ResNet-18 and FGVC-Aircraft/DINOv2 — training loss goes to zero while validation loss reaches a minimum at epoch 30, 35 and 26 respectively and then rises: textbook overfitting, absorbed by checkpointing on validation accuracy. The fourth, Flowers-102/ResNet-18, does **not** overfit at this size: its validation loss decreases monotonically to the final epoch. The divergence between validation loss and validation accuracy on FGVC-Aircraft/DINOv2 (loss minimum at epoch 26, best accuracy at epoch 187) is a reminder that the two are not interchangeable selection criteria.
 
 **Which branch should carry into Stage 2.** On the evidence above we recommend **Option A, image-derived class prototypes**:
 
@@ -176,6 +212,9 @@ Both branches are implemented and reported, so this recommendation can be revisi
 - The linear-probe configuration is the specification's suggested baseline, adopted without search. Better numbers are certainly reachable per dataset, but tuning was explicitly out of scope and would have to be done on the validation split.
 - Flowers-102's official training split contains exactly 10 images per class, so its 10-shot and full settings coincide; its three 10-shot runs are identical by construction and carry zero spread.
 - Two-dimensional feature projections are qualitative only: both PCA and t-SNE distort the geometry of the frozen feature spaces.
+- One seed governs both the weight initialization and the minibatch ordering of the linear probe, so the "full" spread measures optimization stochasticity as a whole rather than initialization in isolation.
+- The official splits themselves contain a small number of content-identical images across split boundaries (verified by hashing feature rows: one train↔test pair in DTD partition 1, `dotted_0143` ≡ `dotted_0133`, plus six val↔test pairs; one train↔test pair in Flowers-102). Filename overlap between splits is exactly zero, so this is a property of the published datasets the specification mandates rather than a pipeline fault, and at 1/1880 and 1/6149 the effect on the reported accuracies is negligible — but it is stated rather than presented as a perfectly clean partition.
+- `results/features/` is gitignored, so an external reviewer can re-derive every number from the committed metrics and prediction artifacts, but re-deriving the prototype and zero-shot accuracies from *images* requires re-running `tasks.ps1 extract` (~5 minutes).
 
 ## 6 · Deviations from, and extensions beyond, the specification
 

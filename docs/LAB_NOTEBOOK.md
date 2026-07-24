@@ -53,6 +53,28 @@ External sanity: CLIP RN50 zero-shot is commonly reported at ≈41.7 / 19.3 / 65
 
 **Is the 200-epoch budget adequate?** 8 of 36 probe runs peak at epoch ≥190, so the cap mildly binds. Measured from the saved curves, validation-accuracy gain over the last 100 epochs is +0.63 / +0.81 / +0.98 points — within ~1 point of plateau and comparable to run-to-run spread. The spec's suggested configuration was therefore **kept unchanged**, and this check is reported rather than silently ignored.
 
+## 2026-07-24 — Two review passes and the fixes they forced
+
+Ran the spec-compliance review (cv-expert) and the adversarial number/leakage review (critical-reviewer) in parallel.
+
+**Compliance:** all 47 requirements enumerated from the PDF are satisfied — verdict "compliant with minor gaps", nothing required missing. The adversarial pass independently reproduced all 27 summary rows, all 27 accuracy-table cells, and re-implemented the prototype and zero-shot classifiers from the caches: DTD prototype full = 58.7766 exactly, zero-shot 39.7872 / 17.0417 / 63.6364 exactly. It also confirmed the prototype normalization order is the specified one by showing the two plausible wrong orderings give different answers (59.0957 and 51.5426).
+
+**Real defects found and fixed:**
+1. **Factual numeric error.** §4 said zero-shot on Flowers-102 "lands within 12 points of a ResNet-18 probe trained on the full split". The gap to the *full* probe is 19.6 points; 12 is the gap to the *5-shot* probe. Corrected, and a speculative clause about "a couple of images per class" (no K<5 run exists) removed.
+2. **Overclaim at DTD K=10.** "Beaten everywhere else" treated a cell that is statistically indistinguishable at n=3 (paired −0.94 ± 0.83; per-seed −1.60 / 0.00 / −1.22, one exact tie) as a clean loss. Now stated as indistinguishable.
+3. **No paired statistics anywhere**, despite the project's own rule. Added `paired_heads_table.md` (generated): the one prototype win, DTD K=5, is **+0.90 ± 0.14 with 3/3 seeds agreeing** — far stronger than the overlapping marginal intervals it was previously argued from.
+4. **Overfitting claim over-generalized.** Curves are saved only for K=10, and Flowers-102/ResNet-18 does *not* overfit (validation loss decreases monotonically to epoch 199). Scoped to the three combinations that actually overfit.
+5. **The `pool_fingerprint` guard could not do what it claimed.** DTD's three partitions and all three splits have byte-identical label sequences (40 per class, sorted), so a partition change passed the assertion silently. Fingerprint now hashes image identities as well: dtd train/val/test are `LF…4d95 / af7f / 0eae` and partition 2 gives `7a04`, all distinct. All 18 subset files upgraded **in place with indices untouched**, and 21 feature caches stamped; re-ran the grid and every number is unchanged.
+6. **"No encoder was ever chosen by looking at test accuracy" was false** — the confusion-matrix encoder was picked by test accuracy. Now picked by validation accuracy, and the two presentation decisions genuinely made after the test read-out (which matrix to show, the Stage-2 branch recommendation) are flagged rather than hidden; validation gives the same ordering (DINOv2 68.62 vs ResNet-18 38.36 on FGVC), so the recommendation does not depend on test.
+7. **Caption/labelling errors:** "the DINOv2 5-shot probe *equals* the ResNet-18 full probe" overstated a 0.15-point deficit (now "matches within run-to-run noise"); Figure 10 attributed the 30.6-point *probe* gap to a *prototype* figure (the prototype gap is 9.2); "recovers barely half" holds for DINOv2 but not ResNet-18 (68.8%); confusion titles quoted the 3-seed mean over a seed-0 matrix; one of six DTD confusions was omitted; figure subtitles promised error bars on single-run points.
+8. **Table bolding was hand-applied and inconsistent** (DTD K=10's winner unmarked) — moved into `make_tables.py` and defined in the caption.
+9. **repro_check was shallower than advertised** — extended to also verify all 27 prediction files against `runs.csv` and to regenerate the three markdown tables from artifacts. Now: 27 summary rows + 27 prediction files + 3 tables, all green.
+10. **Notebook self-containment:** added the Stage-2 branch decision (previously only in the report), paired statistics, the epoch-budget check, the published-CLIP sanity comparison, limitations, the deviations table, per-figure takeaways, and display-name mapping for the last table that still printed raw pipeline IDs. Now 30 cells.
+
+Also: training curves now plot validation **accuracy** on a twin axis, since the report's sharpest curve claim is about accuracy diverging from loss; feature plots switched to a colourblind-safe palette with varying marker shapes; the CLIP modality gap is explained where the CLIP panels appear; DTD confusion axes use class names; duplicate ADR 0001 file removed; ADR 0004's "removed from the working tree" claim narrowed to tracked files (the gitignored v1 feature caches remain on local disk).
+
+**One reported finding was a false positive:** the compliance reviewer flagged CLAUDE.md as still describing the episodic v1 protocol. The file on disk had already been rewritten; the agent was reading the stale copy cached in its own system prompt from session start. Verified directly — no occurrences of `episodes`, `best_baselines`, `95% CI` or `mini-imagenet` remain.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*

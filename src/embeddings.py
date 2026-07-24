@@ -120,7 +120,14 @@ def feat_path(dataset, split, encoder):
 
 
 def cache_features(pool, encoder_name, extract_fn, dim):
-    """Extract + save unless the cache exists. Returns the cache path."""
+    """Extract + save unless the cache exists. Returns the cache path.
+
+    The cache carries the split's fingerprint (labels + image identities) so that
+    downstream code can check the committed training subsets against the split the
+    features actually came from.
+    """
+    from .data import pool_fingerprint
+
     path = feat_path(pool.name, pool.split, encoder_name)
     if path.exists():
         return path
@@ -128,8 +135,35 @@ def cache_features(pool, encoder_name, extract_fn, dim):
     assert (labels.numpy() == pool.labels).all(), "extraction reordered labels"
     torch.save({"features": feats, "labels": labels, "dim": dim,
                 "class_names": pool.class_names, "dataset": pool.name,
-                "split": pool.split, "encoder": encoder_name}, path)
+                "split": pool.split, "encoder": encoder_name,
+                "pool_fingerprint": pool_fingerprint(pool)}, path)
     return path
+
+
+def backfill_fingerprints(pools_by_key):
+    """Add `pool_fingerprint` to feature caches written before it was recorded.
+
+    pools_by_key: {(dataset, split): Pool}. Only the metadata field is written;
+    the cached tensors are untouched, so no result changes.
+    """
+    from .data import pool_fingerprint
+
+    updated = []
+    for (ds, split), pool in pools_by_key.items():
+        fp = pool_fingerprint(pool)
+        for enc in encoders_for(ds):
+            path = feat_path(ds, split, enc)
+            if not path.exists():
+                continue
+            d = torch.load(path, weights_only=True)
+            if d.get("pool_fingerprint") == fp:
+                continue
+            assert (d["labels"].numpy() == pool.labels).all(), \
+                f"{path.name}: cached labels do not match the current split"
+            d["pool_fingerprint"] = fp
+            torch.save(d, path)
+            updated.append(path.name)
+    return updated
 
 
 def load_features(dataset, split, encoder):

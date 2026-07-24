@@ -29,6 +29,75 @@ def cell(row):
     return f"{100 * r['mean_acc']:.2f}"
 
 
+def paired_table():
+    """Paired per-seed head comparison (image prototypes − linear probe).
+
+    Legitimate pairing: at a given (dataset, encoder, K) both heads are trained on
+    the *same* committed subset indices and evaluated on the same test split, so
+    the per-seed differences are matched and far tighter than the marginal spreads.
+    """
+    import numpy as np
+
+    cfg = load_config()
+    lines = ["| Dataset | Encoder | K | Prototypes − probe (paired) | Seeds favouring prototypes |",
+             "|---|---|---|---|---|"]
+    for ds in cfg["datasets"]:
+        spec = "" if cfg["datasets"][ds]["spec_selected"] else " ‡"
+        for enc in ("resnet18", "dinov2_vits14"):
+            for k in ("5shot", "10shot"):
+                try:
+                    a = np.load(metrics_dir("raw") / f"image_prototype_{ds}_{enc}_{k}.npy")
+                    b = np.load(metrics_dir("raw") / f"linear_probe_{ds}_{enc}_{k}.npy")
+                except FileNotFoundError:
+                    continue
+                d = 100 * (a - b)
+                lines.append(f"| {dataset_label(ds)}{spec} | {encoder_label(enc, short=True)} "
+                             f"| {k.replace('shot', '')} | {d.mean():+.2f} ± {d.std(ddof=1):.2f} "
+                             f"| {int((d > 0).sum())} / {len(d)} |")
+    lines.append("")
+    lines.append("Mean ± sample standard deviation (ddof = 1) of the per-seed difference in "
+                 "top-1 accuracy, both heads trained on identical subset indices. Positive "
+                 "favours image prototypes. The `full` setting is omitted because the "
+                 "prototype head runs once there and the probe varies only by initialization, "
+                 "so the runs are not paired.")
+    out = metrics_dir() / "paired_heads_table.md"
+    table = "\n".join(lines)
+    out.write_text(table, encoding="utf-8")
+    return table, out
+
+
+def macro_table():
+    """Balanced (macro-averaged) accuracy alongside top-1, for the plotted
+    full-split probe run. Relevant because Flowers-102's official test split is
+    class-imbalanced (20-238 images per class) while top-1 is image-weighted."""
+    import numpy as np
+
+    from src.evaluation import load_predictions
+
+    cfg = load_config()
+    runs = pd.read_csv(metrics_dir() / "runs.csv")
+    lines = ["| Dataset | Encoder | Top-1 (%) | Balanced / macro (%) |", "|---|---|---|---|"]
+    for ds in cfg["datasets"]:
+        g = runs[(runs["dataset"] == ds) & (runs["head"] == "linear_probe")
+                 & (runs["k_shot"] == "full")]
+        enc = g.groupby("encoder")["val_acc"].mean().idxmax()
+        pred, target = load_predictions(f"run_{ds}_{enc}_linear_probe_full")
+        pred, target = np.asarray(pred), np.asarray(target)
+        macro = float(np.mean([(pred[target == c] == c).mean() for c in np.unique(target)]))
+        spec = "" if cfg["datasets"][ds]["spec_selected"] else " ‡"
+        lines.append(f"| {dataset_label(ds)}{spec} | {encoder_label(enc, short=True)} "
+                     f"| {100 * (pred == target).mean():.2f} | {100 * macro:.2f} |")
+    lines.append("")
+    lines.append("Single full-split linear-probe run (initialization seed 0) on each dataset's "
+                 "best-by-validation encoder. The two columns coincide when the test split is "
+                 "balanced (DTD, FGVC-Aircraft) and diverge for Flowers-102, whose official "
+                 "test split is class-imbalanced.")
+    out = metrics_dir() / "macro_accuracy_table.md"
+    table = "\n".join(lines)
+    out.write_text(table, encoding="utf-8")
+    return table, out
+
+
 def main():
     cfg = load_config()
     s = pd.read_csv(metrics_dir() / "summary.csv")
@@ -38,15 +107,29 @@ def main():
     for ds in cfg["datasets"]:
         g = s[s["dataset"] == ds]
         spec = "" if cfg["datasets"][ds]["spec_selected"] else " ‡"
+        # Best supervised configuration per (dataset, K), marked in bold. Computed
+        # here so the emphasis is generated, never hand-applied.
+        best = {k: g[(g["k_shot"] == k) & (g["head"] != "zeroshot_clip")]["mean_acc"].max()
+                for k in K_COLS}
         for (enc, head), gg in g.groupby(["encoder", "head"], sort=False):
             if head == "zeroshot_clip":
                 cells = ["—", "—", "—", cell(gg[gg["k_shot"] == "none"])]
             else:
-                cells = [cell(gg[gg["k_shot"] == k]) for k in K_COLS] + ["—"]
+                cells = []
+                for k in K_COLS:
+                    row = gg[gg["k_shot"] == k]
+                    txt = cell(row)
+                    if not row.empty and row.iloc[0]["mean_acc"] == best[k]:
+                        txt = f"**{txt}**"
+                    cells.append(txt)
+                cells.append("—")
             lines.append(f"| {dataset_label(ds)}{spec} | {encoder_label(enc, short=True)} "
                          f"| {head_label(head)} | " + " | ".join(cells) + " |")
     lines.append("")
-    lines.append("Top-1 accuracy (%) on the complete official test split. "
+    lines.append("**Bold** marks the best supervised configuration in each "
+                 "(dataset, training-set size) column; zero-shot CLIP is excluded from "
+                 "that comparison because it uses no training images. "
+                 "Top-1 accuracy (%) on the complete official test split. "
                  "5-shot / 10-shot: mean ± std over 3 training-subset seeds; "
                  "full linear probe: mean ± std over 3 initialization seeds; "
                  "full image prototypes and zero-shot CLIP are single deterministic runs. "
@@ -60,6 +143,10 @@ def main():
     out.write_text(table, encoding="utf-8")
     print(table)
     print(f"\nwritten: {out}")
+
+    for tbl, path in (paired_table(), macro_table()):
+        print("\n" + tbl)
+        print(f"\nwritten: {path}")
 
 
 if __name__ == "__main__":

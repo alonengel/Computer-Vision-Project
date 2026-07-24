@@ -14,7 +14,7 @@ def main():
     allow_insecure_downloads()
     cfg = load_config()
 
-    train_labels, split_rows = {}, []
+    train_pools, split_rows, pools = {}, [], {}
     for ds in cfg["datasets"]:
         print(f"\n=== {ds} ===", flush=True)
         for split in SPLITS:
@@ -29,8 +29,9 @@ def main():
                                "per_class_median": int(np.median(counts)),
                                "per_class_max": int(counts.max()),
                                "spec_selected": cfg["datasets"][ds]["spec_selected"]})
+            pools[(ds, split)] = pool
             if split == "train":
-                train_labels[ds] = pool.labels
+                train_pools[ds] = pool
                 print(f"         example classes: {pool.class_names[:4]} ...")
 
     import pandas as pd
@@ -44,8 +45,15 @@ def main():
     df.to_csv(metrics_dir() / "dataset_splits.csv", index=False)
     print(f"\nwritten: {metrics_dir() / 'dataset_splits.csv'}")
 
-    created = build_all_subsets(train_labels)
-    print(f"\nK-shot subset files created: {len(created)}")
+    created, upgraded = build_all_subsets(train_pools)
+    print(f"\nK-shot subset files created: {len(created)}; "
+          f"fingerprints upgraded in place (indices unchanged): {len(upgraded)}")
+
+    from src.embeddings import backfill_fingerprints
+
+    filled = backfill_fingerprints(pools)
+    if filled:
+        print(f"feature caches stamped with the split fingerprint: {len(filled)}")
     for ds in cfg["datasets"]:
         for k in [s for s in cfg["shots"] if s != "full"]:
             for seed in cfg["subset_seeds"]:

@@ -55,7 +55,8 @@ def main(smoke=False, only_datasets=None):
                                            else cfg["subset_seeds"]):
                     subset_seed = 0 if k == "full" else seed
                     init_seed = seed if k == "full" else 0
-                    idx = training_indices(ds, k, subset_seed, f["train"]["labels"].numpy())
+                    idx = training_indices(ds, k, subset_seed, f["train"]["labels"].numpy(),
+                                           fingerprint=f["train"].get("pool_fingerprint"))
                     set_seed(init_seed)
                     probe = LinearProbe(n_classes, dim, seed=init_seed, **overrides)
                     probe.fit(Xtr[idx], ytr[idx], Xval, yval)
@@ -87,7 +88,8 @@ def main(smoke=False, only_datasets=None):
                 seeds = [0] if k == "full" else cfg["subset_seeds"]
                 accs = []
                 for run, seed in enumerate(seeds):
-                    idx = training_indices(ds, k, seed, f["train"]["labels"].numpy())
+                    idx = training_indices(ds, k, seed, f["train"]["labels"].numpy(),
+                                           fingerprint=f["train"].get("pool_fingerprint"))
                     proto = PrototypeClassifier(n_classes).fit(Xtr[idx], ytr[idx])
                     pred = proto.predict(Xte)
                     acc = top1(pred, yte)
