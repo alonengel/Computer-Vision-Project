@@ -1,0 +1,10 @@
+Dataset,dataset,split,images,classes,per_class_min,per_class_median,per_class_max,spec_selected
+DTD,dtd,train,1880,47,40,40,40,True
+DTD,dtd,val,1880,47,40,40,40,True
+DTD,dtd,test,1880,47,40,40,40,True
+FGVC-Aircraft,fgvc_aircraft,train,3334,100,33,33,34,True
+FGVC-Aircraft,fgvc_aircraft,val,3333,100,33,33,34,True
+FGVC-Aircraft,fgvc_aircraft,test,3333,100,33,33,34,True
+Oxford Flowers-102 ‡,flowers102,train,1020,102,10,10,10,False
+Oxford Flowers-102 ‡,flowers102,val,1020,102,10,10,10,False
+Oxford Flowers-102 ‡,flowers102,test,6149,102,20,46,238,False

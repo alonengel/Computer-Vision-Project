@@ -61,5 +61,185 @@
     "n_runs": 1,
     "mean_acc": 0.39787232875823975,
     "std_acc": 0.0
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "resnet18",
+    "head": "linear_probe",
+    "k_shot": "5shot",
+    "n_runs": 3,
+    "mean_acc": 0.19901989897092184,
+    "std_acc": 0.017238894405249495
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "resnet18",
+    "head": "image_prototype",
+    "k_shot": "5shot",
+    "n_runs": 3,
+    "mean_acc": 0.16041604181130728,
+    "std_acc": 0.00826218649106618
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "resnet18",
+    "head": "linear_probe",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.2736273606618245,
+    "std_acc": 0.008336298254339831
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "resnet18",
+    "head": "image_prototype",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.19851985077063242,
+    "std_acc": 0.004651273753853996
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "resnet18",
+    "head": "linear_probe",
+    "k_shot": "full",
+    "n_runs": 3,
+    "mean_acc": 0.3662366171677907,
+    "std_acc": 0.002722403676682566
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "resnet18",
+    "head": "image_prototype",
+    "k_shot": "full",
+    "n_runs": 1,
+    "mean_acc": 0.25202521681785583,
+    "std_acc": 0.0
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "head": "linear_probe",
+    "k_shot": "5shot",
+    "n_runs": 3,
+    "mean_acc": 0.36473647753397626,
+    "std_acc": 0.0069548312991611705
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "head": "image_prototype",
+    "k_shot": "5shot",
+    "n_runs": 3,
+    "mean_acc": 0.23112311462561289,
+    "std_acc": 0.013612015098936399
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "head": "linear_probe",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.5129512945810953,
+    "std_acc": 0.009494119171848383
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "head": "image_prototype",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.27802780270576477,
+    "std_acc": 0.011683215640598545
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "head": "linear_probe",
+    "k_shot": "full",
+    "n_runs": 3,
+    "mean_acc": 0.6720672051111857,
+    "std_acc": 0.0010817787482213287
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "head": "image_prototype",
+    "k_shot": "full",
+    "n_runs": 1,
+    "mean_acc": 0.3441344201564789,
+    "std_acc": 0.0
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "clip_rn50",
+    "head": "zeroshot_clip",
+    "k_shot": "none",
+    "n_runs": 1,
+    "mean_acc": 0.17041704058647156,
+    "std_acc": 0.0
+  },
+  {
+    "dataset": "flowers102",
+    "encoder": "resnet18",
+    "head": "linear_probe",
+    "k_shot": "5shot",
+    "n_runs": 3,
+    "mean_acc": 0.755841056505839,
+    "std_acc": 0.008428975453515753
+  },
+  {
+    "dataset": "flowers102",
+    "encoder": "resnet18",
+    "head": "image_prototype",
+    "k_shot": "5shot",
+    "n_runs": 3,
+    "mean_acc": 0.7019027471542358,
+    "std_acc": 0.0013895047676418196
+  },
+  {
+    "dataset": "flowers102",
+    "encoder": "resnet18",
+    "head": "linear_probe",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.8321678042411804,
+    "std_acc": 0.0
+  },
+  {
+    "dataset": "flowers102",
+    "encoder": "resnet18",
+    "head": "image_prototype",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.7521548271179199,
+    "std_acc": 0.0
+  },
+  {
+    "dataset": "flowers102",
+    "encoder": "resnet18",
+    "head": "linear_probe",
+    "k_shot": "full",
+    "n_runs": 3,
+    "mean_acc": 0.832818329334259,
+    "std_acc": 0.0011267425128106312
+  },
+  {
+    "dataset": "flowers102",
+    "encoder": "resnet18",
+    "head": "image_prototype",
+    "k_shot": "full",
+    "n_runs": 1,
+    "mean_acc": 0.7521548271179199,
+    "std_acc": 0.0
+  },
+  {
+    "dataset": "flowers102",
+    "encoder": "clip_rn50",
+    "head": "zeroshot_clip",
+    "k_shot": "none",
+    "n_runs": 1,
+    "mean_acc": 0.6363636255264282,
+    "std_acc": 0.0
   }
 ]

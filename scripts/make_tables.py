@@ -51,7 +51,10 @@ def main():
                  "full linear probe: mean ± std over 3 initialization seeds; "
                  "full image prototypes and zero-shot CLIP are single deterministic runs. "
                  "Zero-shot CLIP uses no labeled training images, so it has one value only. "
-                 "‡ = beyond the spec's required pair of datasets.")
+                 "‡ = beyond the spec's required pair of datasets. "
+                 "A standard deviation of exactly 0.00 at Flowers-102 K = 10 is not a rounding "
+                 "artifact: that dataset's official training split holds exactly 10 images per "
+                 "class, so all three 10-shot subsets are the same set of images.")
     table = "\n".join(lines)
     out = metrics_dir() / "accuracy_table.md"
     out.write_text(table, encoding="utf-8")

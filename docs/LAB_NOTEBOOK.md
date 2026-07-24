@@ -2,9 +2,60 @@
 
 Chronological record of every step: what was done, why, exact commands, errors and fixes.
 
+> **Note.** Entries dated 2026-07-17 to 2026-07-20 describe the **pre-specification** implementation (MNIST / CIFAR-10 / Mini-ImageNet, episodic few-shot protocol), archived at tag `stage1-v1-episodic`. From 2026-07-24 the course document `_docs/stage_1.pdf` is the source of truth (ADR 0004) and the experiment is a different one. History is kept, never rewritten.
+
 ---
 
-## 2026-07-17 — Repo moved to D:, scaffold
+## 2026-07-24 — Specification received: Stage 1 rebuilt from `_docs/stage_1.pdf`
+
+The official assignment document arrived and supersedes the outline the project had been built from. It specifies a materially different experiment; the work was rebuilt rather than patched.
+
+**Backup first** (before touching anything): git tag `stage1-v1-episodic` + branch `archive/stage1-v1-episodic`, both pushed to the remote, plus a physical copy at `D:\_backups\Computer-Vision-Project_stage1-v1-episodic_20260724` (130 MB, full `.git` history, excludes regenerable `data/` and `results/features/`). Verified the copy afterwards — robocopy's `/XD results\features` did not match a relative path, so the feature caches were copied and then pruned.
+
+**What changed** (ADR 0004): datasets MNIST/CIFAR-10/Mini-ImageNet → DTD (partition 1) / FGVC-Aircraft (`variant`) / Flowers-102; sampled episodes → official train/val/test splits, never merged; K ∈ {1,5,10} episodic → K ∈ {5,10,full} images per class with balanced subsets (seeds 0,1,2); encoders CLIP ViT-B/32 + DINOv2 + ResNet-50 → ResNet-18 (all datasets) + DINOv2 ViT-S/14 (FGVC-Aircraft) + CLIP RN50 (zero-shot only); metric mean ± 95% CI over episodes → top-1 on the complete official test split, mean ± std over 3 runs; probe Adam/300 steps → AdamW 1e-3 / wd 1e-4 / batch 64 / ≤200 epochs with best-validation-accuracy checkpointing.
+
+**Group choices** (ADR 0005, confirmed with the user): all three datasets (spec pair = DTD + FGVC-Aircraft, Flowers-102 marked ‡), **both** prototype branches so the Stage-2 branch can be chosen on evidence, DINOv2 on FGVC-Aircraft only.
+
+**Rebuilt:** `config/config.json` (+ `config/flowers102_classes.json` — torchvision exposes no class names for Flowers-102 and the zero-shot prompts need them), `src/{data,embeddings,classifiers,evaluation,visualize}.py`, `scripts/{prepare_data,extract_features,run_experiments,make_tables,make_figures,repro_check}.py`, all notebook sections, README, CLAUDE.md, ADRs 0001/0004/0005 (0002 marked superseded, 0003 revised). Obsolete v1 artifacts removed from the working tree via `git rm` (`Remove-Item` is sandbox-blocked in the repo).
+
+**Downloads.** DTD verified exactly as expected: 1880/1880/1880 images, 47 classes, 40 per class in every split. FGVC-Aircraft (2.75 GB) and Flowers-102 ran in the background at ~0.6–1.7 MB/s.
+
+**Pipeline validated on DTD before the other datasets finished downloading** — added dataset filters to `extract_features.py` / `run_experiments.py` for this. Full DTD grid (9 probe runs × 200 epochs + 7 prototype runs + zero-shot) takes **32 seconds**:
+
+```
+linear probe    5-shot 45.60 ± 0.64 | 10-shot 54.31 ± 0.28 | full 62.84 ± 0.45
+image prototype 5-shot 46.51 ± 0.64 | 10-shot 53.37 ± 1.04 | full 58.78
+zero-shot CLIP RN50                                          39.79
+```
+
+Sanity: published ResNet-18 linear probe on DTD is ≈ 62–67% and CLIP RN50 zero-shot DTD ≈ 41.7% with prompt ensembles (we use the spec's single prompt) — both in range. The training curves show the textbook picture the spec asks for: training loss → 0 while validation loss bottoms near epoch 30 and then rises, with the checkpoint landing at the validation minimum. `repro_check` green.
+
+**Fixes during validation:** zero-shot was being printed in the "full train split" column of the accuracy table (misleading — it uses no training images); it now has its own "no training images" column. Seaborn's `whitegrid` theme drew gridlines over the confusion-matrix and feature-projection images; `ax.grid(False)` added.
+
+**All datasets verified** against their official splits: DTD 1880/1880/1880 (47 classes, 40 per class), FGVC-Aircraft 3334/3333/3333 (100 classes, 33–34 per class), Flowers-102 1020/1020/6149 (102 classes, exactly 10 train per class; the test split is class-imbalanced 20–238, as published). 18 balanced K-shot subset files committed. As predicted, the Flowers-102 K=10 subset contains 1020 images — the entire training split — so its 10-shot and full settings coincide and its three 10-shot runs are identical by construction.
+
+**Feature extraction:** 21 caches (3 datasets × 3 splits × their encoders) + 3 CLIP text-prototype files, ~46k images through the encoders.
+
+**Full experiment grid: 2.1 minutes** (36 linear-probe runs at ≤200 epochs, 28 prototype runs, 3 zero-shot). `repro_check` green on all 27 summary rows.
+
+Headline numbers (top-1, complete official test split):
+
+```
+DTD            probe 45.60±0.64 / 54.31±0.28 / 62.84±0.45   proto 46.51±0.64 / 53.37±1.04 / 58.78   zero-shot 39.79
+FGVC ResNet-18 probe 19.90±1.72 / 27.36±0.83 / 36.62±0.27   proto 16.04±0.83 / 19.85±0.47 / 25.20   zero-shot 17.04
+FGVC DINOv2    probe 36.47±0.70 / 51.30±0.95 / 67.21±0.11   proto 23.11±1.36 / 27.80±1.17 / 34.41
+Flowers-102 ‡  probe 75.58±0.84 / 83.22±0.00 / 83.28±0.11   proto 70.19±0.14 / 75.22±0.00 / 75.22   zero-shot 63.64
+```
+
+External sanity: CLIP RN50 zero-shot is commonly reported at ≈41.7 / 19.3 / 65.9 for these datasets; ours (39.8 / 17.0 / 63.6) sits just below, consistent with the spec's single prompt vs a published prompt ensemble.
+
+**Findings.** (1) The encoder dominates the head — DINOv2 lifts the FGVC-Aircraft full-split probe by 30.6 points over ResNet-18, and the DINOv2 probe with 5 images/class (36.47) matches the ResNet-18 probe on the entire split (36.62). (2) Image prototypes beat the probe at exactly one grid cell (DTD K=5) and lose by a widening margin elsewhere. (3) Training curves show the probe overfitting at every training size, absorbed by validation-accuracy checkpointing; on FGVC/DINOv2 the validation *loss* rises from ~epoch 25 while best validation *accuracy* lands at epoch 187 — loss and accuracy are not interchangeable selection criteria.
+
+**Is the 200-epoch budget adequate?** 8 of 36 probe runs peak at epoch ≥190, so the cap mildly binds. Measured from the saved curves, validation-accuracy gain over the last 100 epochs is +0.63 / +0.81 / +0.98 points — within ~1 point of plateau and comparable to run-to-run spread. The spec's suggested configuration was therefore **kept unchanged**, and this check is reported rather than silently ignored.
+
+---
+
+## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*
 
 **Repo relocation.** The project directory was moved from `C:\Users\Alon\Desktop\Computer-Vision-Project` to `D:\Computer-Vision-Project` (361 GB free on D:) so datasets and cached features can live next to the code. All code uses paths relative to the repo root (`src/utils.py:repo_path`), so nothing else changed.
 
