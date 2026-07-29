@@ -101,16 +101,27 @@ def viz_selection(dataset, n_classes, class_seed, max_per_class):
     return classes, np.sort(np.concatenate(idx))
 
 
+# One fixed t-SNE configuration for every panel of every figure, so panels are
+# produced under identical conditions (they remain qualitative either way: t-SNE
+# preserves local neighbourhoods, not global distances, and coordinates are not
+# comparable across separately fitted panels).
+TSNE_PARAMS = {"n_components": 2, "random_state": 0, "init": "pca", "perplexity": 30.0}
+
+
 def _project(X, seed=0):
-    """Return {'PCA': xy, 't-SNE': xy}, each fitted JOINTLY to features+prototypes."""
+    """Return {'PCA': xy, 't-SNE': xy}, each fitted JOINTLY to features+prototypes.
+
+    PCA is the primary view (deterministic, linear, globally interpretable);
+    t-SNE is supplementary. Every panel uses the same fixed parameters.
+    """
     from sklearn.decomposition import PCA
     from sklearn.manifold import TSNE
 
+    assert len(X) > 3 * TSNE_PARAMS["perplexity"], \
+        f"too few points ({len(X)}) for perplexity {TSNE_PARAMS['perplexity']}"
     out = {}
     out["PCA"] = PCA(n_components=2, random_state=seed).fit_transform(X)
-    perp = float(min(30, max(5, (len(X) - 1) / 3)))
-    out["t-SNE"] = TSNE(n_components=2, random_state=seed, init="pca",
-                        perplexity=perp).fit_transform(X)
+    out["t-SNE"] = TSNE(**TSNE_PARAMS).fit_transform(X)
     return out
 
 
@@ -131,6 +142,8 @@ def feature_charts():
 
             if enc == "clip_rn50":
                 text = torch.load(clip_text_path(ds), weights_only=True)
+                assert text["class_names"] == names_all, \
+                    f"{ds}: text-prototype class order differs from the feature caches"
                 protos = text["text_prototypes"][classes].float()
                 proto_kind = "text prototypes"
             else:
@@ -144,14 +157,17 @@ def feature_charts():
 
             stacked = torch.cat([X, protos]).numpy()
             proj = _project(stacked)
-            panels = [{"title": f"{method} — {encoder_label(enc, short=True)}",
+            titles = {"PCA": f"PCA (primary) — {encoder_label(enc, short=True)}",
+                      "t-SNE": f"t-SNE (supplementary) — {encoder_label(enc, short=True)}"}
+            panels = [{"title": titles[method],
                        "xy": xy[:len(X)], "labels": y, "proto_xy": xy[len(X):]}
                       for method, xy in proj.items()]
             print("figure:", feature_projection(
                 panels, sel_names,
                 f"{dataset_label(ds)} — {vz['n_classes']} classes, test features with "
-                f"{proto_kind}\n(projection fitted jointly to features and prototypes; "
-                f"qualitative view)",
+                f"{proto_kind}\n(L2-normalized features; projections fitted jointly to "
+                f"features and prototypes; fixed seeds; qualitative view — t-SNE shows "
+                f"local neighbourhoods only)",
                 f"features_{ds}_{enc}.png"))
 
 

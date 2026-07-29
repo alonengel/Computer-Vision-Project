@@ -98,6 +98,50 @@ def macro_table():
     return table, out
 
 
+def handoff_table():
+    """Stage-2/3 handoff: selected encoder, prototype target and linear-probe
+    baseline per dataset. Encoder selection uses **validation** accuracy only;
+    the test column is the already-published one-time read-out that Stage 2/3
+    must beat, not a selection criterion.
+    """
+    cfg = load_config()
+    runs = pd.read_csv(metrics_dir() / "runs.csv")
+    s = pd.read_csv(metrics_dir() / "summary.csv")
+    lines = ["| Dataset | Selected encoder (by validation) | Stage-2 prototype target "
+             "(branch A) | Validation headroom (probe − prototypes, full) | "
+             "Stage-3 baseline: linear probe, full split (test) |",
+             "|---|---|---|---|---|"]
+    for ds in cfg["datasets"]:
+        g = runs[(runs["dataset"] == ds) & (runs["k_shot"] == "full")]
+        probe_val = g[g["head"] == "linear_probe"].groupby("encoder")["val_acc"].mean()
+        enc = probe_val.idxmax()
+        proto_val = g[(g["head"] == "image_prototype") & (g["encoder"] == enc)]["val_acc"]
+        headroom = ""
+        if len(proto_val) and pd.notna(proto_val.iloc[0]) and str(proto_val.iloc[0]) != "":
+            headroom = (f"{100 * probe_val[enc]:.2f} − {100 * float(proto_val.iloc[0]):.2f} "
+                        f"= {100 * (probe_val[enc] - float(proto_val.iloc[0])):.2f} pts")
+        probe_test = s[(s["dataset"] == ds) & (s["head"] == "linear_probe")
+                       & (s["k_shot"] == "full") & (s["encoder"] == enc)].iloc[0]
+        spec = "" if cfg["datasets"][ds]["spec_selected"] else " ‡"
+        target = (f"class-mean prototypes $\\mu_c$ of the selected training subset, "
+                  f"{encoder_label(enc, short=True)} features")
+        lines.append(f"| {dataset_label(ds)}{spec} | {encoder_label(enc, short=True)} "
+                     f"| {target} | {headroom} "
+                     f"| {100 * probe_test['mean_acc']:.2f} ± {100 * probe_test['std_acc']:.2f} |")
+    lines.append("")
+    lines.append("Encoder selection: highest mean **validation** accuracy of the full-split "
+                 "linear probe (`runs.csv`, `val_acc`); test accuracy plays no role. "
+                 "Validation headroom: full-split probe validation accuracy minus full-split "
+                 "image-prototype validation accuracy on the same encoder — the gap a "
+                 "Stage-2 Flow-Matching decision layer has room to close, measured without "
+                 "touching the test split. The Stage-3 baseline column is the one-time test "
+                 "read-out published in the accuracy table. ‡ = beyond our selected pair.")
+    out = metrics_dir() / "handoff_table.md"
+    table = "\n".join(lines)
+    out.write_text(table, encoding="utf-8")
+    return table, out
+
+
 def main():
     cfg = load_config()
     s = pd.read_csv(metrics_dir() / "summary.csv")
@@ -134,7 +178,8 @@ def main():
                  "full linear probe: mean ± std over 3 initialization seeds; "
                  "full image prototypes and zero-shot CLIP are single deterministic runs. "
                  "Zero-shot CLIP uses no labeled training images, so it has one value only. "
-                 "‡ = beyond the spec's required pair of datasets. "
+                 "‡ = beyond our selected dataset pair (the specification asks for any two "
+                 "of the three; we selected DTD + FGVC-Aircraft and additionally ran the third). "
                  "A standard deviation of exactly 0.00 at Flowers-102 K = 10 is not a rounding "
                  "artifact: that dataset's official training split holds exactly 10 images per "
                  "class, so all three 10-shot subsets are the same set of images.")
@@ -144,7 +189,7 @@ def main():
     print(table)
     print(f"\nwritten: {out}")
 
-    for tbl, path in (paired_table(), macro_table()):
+    for tbl, path in (paired_table(), macro_table(), handoff_table()):
         print("\n" + tbl)
         print(f"\nwritten: {path}")
 

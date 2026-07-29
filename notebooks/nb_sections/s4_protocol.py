@@ -4,7 +4,7 @@ CELLS = [
 
 Everything a reader needs to judge the numbers, in one place.
 
-**Split discipline.** All classes, official train / validation / test splits, train and validation never merged. The validation split is used *only* for linear-probe checkpoint selection (highest validation accuracy). The complete official **test** split is used only for the final top-1 numbers reported below — no hyperparameter, encoder, subset or checkpoint was ever chosen by looking at test accuracy.
+**Split discipline.** All classes, official train / validation / test splits, train and validation never merged. The validation split is used *only* for linear-probe checkpoint selection (highest validation accuracy). The complete official **test** split is used only for the final top-1 numbers reported below — no hyperparameter, encoder, subset or checkpoint was ever chosen by looking at test accuracy. Decisions that feed forward into Stage 2/3 — the representative encoder shown in figures and the Stage-2 branch selection (§6) — are likewise made from **validation** accuracies and methodological considerations, never from test results.
 
 **Run and seed structure** (3 runs per training-set size, exactly as specified):
 

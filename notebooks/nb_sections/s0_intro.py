@@ -14,6 +14,6 @@ The specification (`_docs/stage_1.pdf`) lists three candidate baselines and asks
 
 **Protocol.** All classes, official train / validation / test splits, never merging train and validation. Training-set sizes $K \\in \\{5, 10, \\text{full}\\}$ images per class; the 5- and 10-shot settings use balanced subsets of the official training split with seeds $\\{0,1,2\\}$. The validation split is used for model selection (linear-probe checkpointing) and the **complete official test split** only for the final top-1 accuracy.
 
-**Group choices** (documented in `docs/adr/0005-group-choices-within-the-spec.md`): the spec's required pair is DTD + FGVC-Aircraft; Flowers-102 is run additionally and marked ‡ throughout. DINOv2 ViT-S/14 is used on FGVC-Aircraft, the fine-grained task. ResNet-18 is used on all datasets. CLIP RN50 is used for the zero-shot branch only, as the spec restricts it.
+**Group choices** (documented in `docs/adr/0005-group-choices-within-the-spec.md`): the specification allows any two of the three datasets; **our selected pair is DTD + FGVC-Aircraft** (their training splits make the three K settings genuinely distinct), and Flowers-102 is run additionally, marked ‡ throughout. DINOv2 ViT-S/14 is used on FGVC-Aircraft, the fine-grained task. ResNet-18 is used on all datasets. CLIP RN50 is used for the zero-shot branch only, as the spec restricts it.
 """),
 ]

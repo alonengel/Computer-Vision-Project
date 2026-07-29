@@ -75,6 +75,21 @@ Also: training curves now plot validation **accuracy** on a twin axis, since the
 
 **One reported finding was a false positive:** the compliance reviewer flagged CLAUDE.md as still describing the episodic v1 protocol. The file on disk had already been rewritten; the agent was reading the stale copy cached in its own system prompt from session start. Verified directly — no occurrences of `episodes`, `best_baselines`, `95% CI` or `mini-imagenet` remain.
 
+## 2026-07-26 — Notebook review pass: projections, wording, validation-based handoff
+
+User-directed review of `stage1_presentation.ipynb` against the spec. Audited the PCA/t-SNE pipeline first: L2 normalization ✓, label/prototype alignment ✓ (sorted-class remap, prototypes indexed identically, palette by position), fixed seeds ✓ (`seed=0`, `class_seed=0`), identical classes/examples/colours across encoders ✓ (`viz_selection` runs once per dataset), joint fitting ✓. Two gaps fixed: t-SNE parameters were only *implicitly* identical (the perplexity formula evaluated to 30 for every panel) — now a single explicit `TSNE_PARAMS` constant with a guard assert — and the CLIP text-prototype class order was asserted in `run_experiments` but not at figure time — assert added in `feature_charts` (passes for all three datasets).
+
+**Presentation changes** (no numbers touched):
+- PCA is now labelled and framed as the **primary** view (deterministic, linear, globally interpretable); t-SNE as **supplementary**, read for local neighbourhoods only — panel titles, figure subtitles, notebook §5.5 and report §3.5 all updated.
+- Modality-gap wording softened: the text-prototype/image separation is "*consistent with* the modality gap (Liang et al., 2022)" — a 2-D projection cannot establish it alone; confirmation would need distances in the original 1024-d space. (The separation does appear in the PCA view too, not only t-SNE.)
+- "The spec's required pair" → "**our selected pair**" everywhere (README, report, ADR 0005, notebook, generated table footnotes) — the specification allows any two of the three datasets.
+
+**Branch selection cleaned of test dependence.** `run_experiments.py` now records the prototype head's **validation** accuracy per run (deterministic, no training; test numbers verified byte-identical before/after the rerun). The Stage-2 branch decision is restated in report §4 and notebook §6 as resting on three methodological reasons plus validation-measured headroom: probe − prototype on validation (full split) = 5.3 pts (DTD/ResNet-18), **35.7 pts** (FGVC-Aircraft/DINOv2), 8.5 pts (Flowers-102/ResNet-18). Test accuracy plays no role in the selection.
+
+**New final handoff table** (`scripts/make_tables.py handoff_table()` → `results/metrics/handoff_table.md`, displayed as notebook §7 and in report §4): per dataset — encoder selected by validation (DTD → ResNet-18; FGVC-Aircraft → DINOv2; Flowers ‡ → ResNet-18), Stage-2 prototype target (class-mean μ_c of the selected training subset on that encoder), validation headroom, and the Stage-3 linear-probe baseline as the one-time test read-out (62.84 ± 0.45 / 67.21 ± 0.11 / 83.28 ± 0.11). Caught and fixed a bug in the first version: the Stage-3 baseline column ignored the selected encoder and showed FGVC's ResNet-18 probe (36.62) instead of DINOv2's (67.21).
+
+**Verification:** notebook rebuilt — 34 cells, all 15 code cells executed, zero error outputs; feature figures regenerated (class-order asserts green); extended repro check green (27 summary rows + 27 prediction files + 4 generated tables); `git diff` on the metrics confirms the only change beyond the new `handoff_table.md` and the proto `val_acc` column is one footnote sentence — **every reported number is unchanged**.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*

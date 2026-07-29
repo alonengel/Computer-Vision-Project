@@ -1,4 +1,4 @@
-# CVLAB Summer Project — Classification Baselines and Flow Matching
+﻿# CVLAB Summer Project — Classification Baselines and Flow Matching
 
 Three-stage course project. **`_docs/stage_1.pdf` is the single source of truth for Stage 1** (ADR 0004).
 
@@ -20,7 +20,7 @@ Three-stage course project. **`_docs/stage_1.pdf` is the single source of truth 
 | Runs | 3 per training size (subset seeds at 5/10-shot, initialization seeds at full) |
 | Metric | top-1 accuracy on the **complete official test split**, mean ± std over 3 runs |
 
-‡ beyond the spec's required pair (DTD + FGVC-Aircraft); marked as such in every table. Group choices are recorded in [docs/adr/0005-group-choices-within-the-spec.md](docs/adr/0005-group-choices-within-the-spec.md).
+‡ beyond our selected dataset pair — the specification allows any two of the three; we selected DTD + FGVC-Aircraft and additionally ran the third, marked as such in every table. Group choices are recorded in [docs/adr/0005-group-choices-within-the-spec.md](docs/adr/0005-group-choices-within-the-spec.md).
 
 ## Environment
 

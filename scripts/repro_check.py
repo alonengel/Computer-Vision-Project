@@ -53,7 +53,8 @@ def check_tables():
 
     with contextlib.redirect_stdout(io.StringIO()):
         mt.main()  # rewrites the three tables from summary.csv / raw arrays
-    for name in ("accuracy_table.md", "paired_heads_table.md", "macro_accuracy_table.md"):
+    for name in ("accuracy_table.md", "paired_heads_table.md", "macro_accuracy_table.md",
+                 "handoff_table.md"):
         path = metrics_dir() / name
         if not path.exists():
             bad += 1

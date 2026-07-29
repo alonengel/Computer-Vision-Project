@@ -4,7 +4,7 @@ CELLS = [
 
 ### 5.1 Accuracy table
 
-Top-1 accuracy (%) on the complete official test split, for every dataset, encoder, training-set size and implemented baseline. Generated programmatically from `results/metrics/summary.csv`; ‡ marks the dataset beyond the spec's required pair. Statistics are the sample standard deviation (ddof = 1) over the 3 runs.
+Top-1 accuracy (%) on the complete official test split, for every dataset, encoder, training-set size and implemented baseline. Generated programmatically from `results/metrics/summary.csv`; ‡ marks the dataset beyond our selected pair (the specification allows any two of the three). Statistics are the sample standard deviation (ddof = 1) over the 3 runs.
 """),
     ("code", """
 from IPython.display import Markdown

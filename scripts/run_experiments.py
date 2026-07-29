@@ -91,13 +91,17 @@ def main(smoke=False, only_datasets=None):
                     idx = training_indices(ds, k, seed, f["train"]["labels"].numpy(),
                                            fingerprint=f["train"].get("pool_fingerprint"))
                     proto = PrototypeClassifier(n_classes).fit(Xtr[idx], ytr[idx])
+                    # Validation accuracy is recorded (deterministic, no training)
+                    # so the Stage-2 branch choice can be argued from validation
+                    # data rather than test results.
+                    val_acc = top1(proto.predict(Xval), yval)
                     pred = proto.predict(Xte)
                     acc = top1(pred, yte)
                     accs.append(acc)
                     runs.append({"dataset": ds, "encoder": enc, "head": "image_prototype",
                                  "k_shot": k_label(k), "run": run, "seed_type": "subset",
                                  "seed": seed, "n_train": len(idx), "test_acc": acc,
-                                 "val_acc": "", "best_epoch": ""})
+                                 "val_acc": val_acc, "best_epoch": ""})
                     if run == 0:
                         save_predictions(f"{tag.lstrip('_') or 'run'}_{ds}_{enc}_"
                                          f"image_prototype_{k_label(k)}", pred, yte)

@@ -26,7 +26,7 @@ We implement the required linear probe and **both** prototype branches (ADR 0005
 
 ### 2.1 Datasets and official splits
 
-The specification asks for two of three datasets; we run all three and mark the third (‡) as beyond the required pair (ADR 0005). All classes are used, with the **official** train / validation / test splits; DTD uses partition 1 and FGVC-Aircraft the `variant` annotation level. Training and validation splits are never merged.
+The specification allows any two of the three datasets; we run all three and mark the third (‡) as beyond our selected pair (ADR 0005). All classes are used, with the **official** train / validation / test splits; DTD uses partition 1 and FGVC-Aircraft the `variant` annotation level. Training and validation splits are never merged.
 
 | Dataset | Classes | Train | Validation | Test | Train images per class |
 |---|---|---|---|---|---|
@@ -36,7 +36,7 @@ The specification asks for two of three datasets; we run all three and mark the 
 
 (Generated into `results/metrics/dataset_splits.csv`. Flowers-102's test split is class-imbalanced, 20–238 images per class, as published.)
 
-The spec-selected pair is **DTD + FGVC-Aircraft**, chosen because their training splits (40 and ~33 images per class) make $K \in \{5, 10, \text{full}\}$ three genuinely distinct settings. Flowers-102's official training split holds exactly 10 images per class, so for that dataset the 10-shot setting *is* the full setting — a structural degeneracy we report rather than hide.
+Our selected pair is **DTD + FGVC-Aircraft**, chosen because their training splits (40 and ~33 images per class) make $K \in \{5, 10, \text{full}\}$ three genuinely distinct settings. Flowers-102's official training split holds exactly 10 images per class, so for that dataset the 10-shot setting *is* the full setting — a structural degeneracy we report rather than hide.
 
 ### 2.2 Training-set sizes and subset sampling
 
@@ -81,7 +81,7 @@ Each setting therefore has exactly one interpretable source of variance: trainin
 
 The validation split is used **only** for linear-probe checkpoint selection. No number in the accuracy table was influenced by test accuracy: no hyperparameter, training subset, checkpoint, or encoder used to produce a reported result was chosen by observing the test split, and where a representative encoder had to be picked for a figure it was picked by **validation** accuracy (`scripts/make_figures.py`).
 
-Two presentation decisions are, unavoidably, made *after* the one-time test read-out and are flagged as such rather than hidden: which confusion matrix to display, and the Stage-2 branch recommendation in §4. Neither changes a reported number. For the branch recommendation the validation split tells the same story as the test split — on FGVC-Aircraft the DINOv2 probe leads ResNet-18 on validation by 68.62% vs 38.36%, mirroring the test ordering — so the recommendation does not depend on having seen test results.
+Decisions that feed forward into Stage 2/3 are likewise made without test data: the representative encoder for each figure and the Stage-2 branch selection in §4 are argued from **validation** accuracies (recorded in `runs.csv` for both heads) and from methodological considerations, never from test accuracy. The test split's only role is the one-time read-out reported in §3.
 
 ### 2.6 Reproducibility
 
@@ -107,7 +107,7 @@ Every number below is top-1 accuracy (%) on the complete official test split, re
 | Oxford Flowers-102 ‡ | ResNet-18 | Image prototypes | 70.19 ± 0.14 | 75.22 ± 0.00 | 75.22 | — |
 | Oxford Flowers-102 ‡ | CLIP RN50 | Zero-shot CLIP | — | — | — | 63.64 |
 
-**Bold** marks the best supervised configuration in each (dataset, training-set size) column, applied programmatically in `scripts/make_tables.py`; zero-shot CLIP is excluded from that comparison because it uses no training images. 5-shot / 10-shot: mean ± sample standard deviation (ddof = 1) over the 3 training-subset seeds. Full linear probe: same statistic over the 3 initialization seeds. Full image prototypes and zero-shot CLIP are single deterministic runs and carry no spread. ‡ beyond the spec's required pair. The std of exactly 0.00 at Flowers-102 K = 10 is not rounding: that dataset's official training split holds exactly 10 images per class, so all three 10-shot subsets are the same images.
+**Bold** marks the best supervised configuration in each (dataset, training-set size) column, applied programmatically in `scripts/make_tables.py`; zero-shot CLIP is excluded from that comparison because it uses no training images. 5-shot / 10-shot: mean ± sample standard deviation (ddof = 1) over the 3 training-subset seeds. Full linear probe: same statistic over the 3 initialization seeds. Full image prototypes and zero-shot CLIP are single deterministic runs and carry no spread. ‡ beyond our selected dataset pair (the specification allows any two of the three). The std of exactly 0.00 at Flowers-102 K = 10 is not rounding: that dataset's official training split holds exactly 10 images per class, so all three 10-shot subsets are the same images.
 
 External sanity check: our CLIP RN50 zero-shot numbers (DTD 39.8, FGVC-Aircraft 17.0, Flowers-102 63.6) sit just below the values commonly reported for this checkpoint (≈ 41.7, 19.3, 65.9; Radford et al., 2021, Table 11, and the prompt-ensemble notebook in the official CLIP repository), consistent with our use of the specification's single prompt rather than an ensemble of 80.
 
@@ -185,7 +185,9 @@ Every value is within about one accuracy point of the plateau, and comparable to
 ![Figure 10](../results/figures/features_fgvc_aircraft_resnet18.png)
 *Figure 10 — The same 10 classes, same test images and same colours, with ResNet-18 features. Cluster structure is markedly weaker than in Figure 9. Since both figures draw **image prototypes**, the matching quantity is the prototype-head gap on this dataset (34.41 vs 25.20, i.e. 9.2 points); the corresponding linear-probe gap on the same features is 30.6 points.*
 
-Corresponding figures for the remaining dataset–encoder combinations are in `results/figures/features_*.png`, including the CLIP panels that show test-image embeddings together with their **text** prototypes. In those CLIP panels the ten text prototypes cluster tightly together, well away from the image cloud. This is the well-known CLIP *modality gap*: image and text embeddings occupy separate cones of the shared space, so a text prototype never lands inside its image cluster. It does not indicate a broken classifier — zero-shot classification depends only on the *relative* cosine ordering of a query against the text prototypes, not on absolute image–text proximity.
+In every figure PCA is presented as the primary view — deterministic, linear, with globally meaningful axes — and t-SNE as a supplementary one, read for local neighbourhood structure only: t-SNE does not preserve global distances or cluster sizes, and coordinates are not comparable across separately fitted panels. All t-SNE panels share one fixed configuration (perplexity 30, PCA initialization, seed 0).
+
+Corresponding figures for the remaining dataset–encoder combinations are in `results/figures/features_*.png`, including the CLIP panels that show test-image embeddings together with their **text** prototypes. In those CLIP panels the ten text prototypes appear close to one another and separated from the image points, in both projections. This is *consistent with* the modality gap documented for CLIP-style models (image and text embeddings concentrating in different regions of the joint space; Liang et al., 2022), though a 2-D projection cannot establish that by itself — confirming it would require distance measurements in the original 1024-d space. It does not indicate a broken classifier either way: zero-shot classification depends only on the *relative* cosine ordering of a query against the text prototypes, not on absolute image–text proximity.
 
 ## 4 · Discussion
 
@@ -197,14 +199,24 @@ Corresponding figures for the remaining dataset–encoder combinations are in `r
 
 **Overfitting is real where it appears, and the protocol absorbs it.** Full training histories are retained only for the four representative 10-shot runs (`run_experiments.py` saves curves for `K = 10, seed 0`), so the evidence below is scoped to that training-set size. In three of those four — DTD/ResNet-18, FGVC-Aircraft/ResNet-18 and FGVC-Aircraft/DINOv2 — training loss goes to zero while validation loss reaches a minimum at epoch 30, 35 and 26 respectively and then rises: textbook overfitting, absorbed by checkpointing on validation accuracy. The fourth, Flowers-102/ResNet-18, does **not** overfit at this size: its validation loss decreases monotonically to the final epoch. The divergence between validation loss and validation accuracy on FGVC-Aircraft/DINOv2 (loss minimum at epoch 26, best accuracy at epoch 187) is a reminder that the two are not interchangeable selection criteria.
 
-**Which branch should carry into Stage 2.** On the evidence above we recommend **Option A, image-derived class prototypes**:
+**Which branch carries into Stage 2 — selected on methodological grounds and validation data, never test accuracy.** We select **Option A, image-derived class prototypes**. Three of the four reasons are structural properties of the branches that require no accuracy numbers at all; the fourth is measured on the **validation** split only:
 
-1. *Headroom.* The prototype head sits far below the linear probe on the same frozen features (34.41 vs 67.21 on FGVC-Aircraft/DINOv2; 58.78 vs 62.84 on DTD). That gap is exactly the space a Flow Matching decision layer has to demonstrate a gain in. Zero-shot CLIP's gap is comparable but the branch offers no knob that varies with the training data.
-2. *Experimental surface.* Image prototypes depend on both the encoder and K, so Stage 2 inherits a grid of targets (3 training sizes × the encoders already cached) rather than a single fixed text embedding per class.
-3. *Encoder freedom.* Option A can be built on the strongest representation available (DINOv2 on FGVC-Aircraft), whereas Option B is locked to CLIP RN50 by construction — and CLIP RN50 is the weakest of the three encoders on the fine-grained task.
-4. *Continuity with Stage 3.* Option A reuses precisely the caches the linear probe uses, so the Stage-2 and Stage-3 comparisons rest on the same representation.
+1. *Experimental surface (methodological).* Image prototypes depend on both the encoder and K, so Stage 2 inherits a grid of transport targets (3 training sizes × the cached encoders) rather than a single fixed text embedding per class — more settings in which to characterize the Flow Matching layer.
+2. *Encoder freedom (methodological).* Option A can be built on any cached representation, including DINOv2 on the fine-grained task, whereas Option B is locked to CLIP RN50 by construction.
+3. *Continuity with Stage 3 (methodological).* Option A reuses precisely the caches the linear probe uses, so the Stage-2 and Stage-3 comparisons rest on the same representation.
+4. *Headroom, measured on validation.* On the validation split — never the test split — the full-split prototype head sits well below the full-split probe on the same features: 55.37 vs 60.71 on DTD/ResNet-18 (5.3 points), 32.91 vs 68.62 on FGVC-Aircraft/DINOv2 (35.7 points), 78.04 vs 86.50 on Flowers-102/ResNet-18 (8.5 points) (`runs.csv`, `val_acc`). That validation gap is the space a Flow Matching decision layer has room to close.
 
-Both branches are implemented and reported, so this recommendation can be revisited without re-running anything.
+Both branches are implemented and reported, so this selection can be revisited without re-running anything.
+
+**Stage-2/3 handoff.** The concrete configuration each later stage builds on, per dataset — encoder selected by validation accuracy of the full-split probe, prototype target fixed by the branch selection above, and the linear-probe baseline as the already-published one-time test read-out (generated into `results/metrics/handoff_table.md`):
+
+| Dataset | Selected encoder (by validation) | Stage-2 prototype target (branch A) | Validation headroom (probe − prototypes, full) | Stage-3 baseline: linear probe, full split (test) |
+|---|---|---|---|---|
+| DTD | ResNet-18 | class-mean prototypes $\mu_c$ of the selected training subset, ResNet-18 features | 60.71 − 55.37 = 5.34 pts | 62.84 ± 0.45 |
+| FGVC-Aircraft | DINOv2 | class-mean prototypes $\mu_c$ of the selected training subset, DINOv2 features | 68.62 − 32.91 = 35.70 pts | 67.21 ± 0.11 |
+| Flowers-102 ‡ | ResNet-18 | class-mean prototypes $\mu_c$ of the selected training subset, ResNet-18 features | 86.50 − 78.04 = 8.46 pts | 83.28 ± 0.11 |
+
+Stage 2 trains the Flow Matching model to transport frozen embeddings toward the selected training subset's class prototypes and must beat the corresponding prototype baseline of §3.1; Stage 3 inserts the module before the linear probe and must beat the baseline in the last column — both on the identical cached features and committed subset files.
 
 ## 5 · Limitations
 
@@ -220,7 +232,7 @@ Both branches are implemented and reported, so this recommendation can be revisi
 
 | Item | Status | Justification |
 |---|---|---|
-| Third dataset (Flowers-102) | extension ‡ | the spec asks for two; the third is cheap, and its 10-images-per-class training split is an instructive degenerate case. The required pair (DTD + FGVC-Aircraft) is marked and can be read on its own. |
+| Third dataset (Flowers-102) | extension ‡ | the spec allows any two; the third is cheap, and its 10-images-per-class training split is an instructive degenerate case. Our selected pair (DTD + FGVC-Aircraft) is marked and can be read on its own. |
 | Both prototype branches | extension | the spec asks for one; implementing both lets the Stage-2 branch be chosen on evidence. The exactly-compliant subset is the linear probe plus either branch. |
 | Linear-probe configuration | as specified | AdamW / 1e-3 / 1e-4 / 64 / 200 epochs / best-val-accuracy checkpoint, unchanged. |
 | DINOv2 coverage | as specified | one dataset (FGVC-Aircraft). |
@@ -237,3 +249,4 @@ Both branches are implemented and reported, so this recommendation can be revisi
 - Radford, A., Kim, J. W., Hallacy, C., et al. (2021). *Learning Transferable Visual Models From Natural Language Supervision* (CLIP). ICML 2021.
 - Snell, J., Swersky, K., & Zemel, R. (2017). *Prototypical Networks for Few-shot Learning*. NeurIPS 2017.
 - Loshchilov, I., & Hutter, F. (2019). *Decoupled Weight Decay Regularization* (AdamW). ICLR 2019.
+- Liang, V. W., Zhang, Y., Kwon, Y., Yeung, S., & Zou, J. (2022). *Mind the Gap: Understanding the Modality Gap in Multi-modal Contrastive Representation Learning*. NeurIPS 2022.
