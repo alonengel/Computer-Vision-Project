@@ -64,6 +64,41 @@ print("Branch-selection evidence — validation split only (test accuracy unused
 display(pd.DataFrame(rows))
 """),
     ("markdown", """
+### Which two datasets carry forward — decision
+
+The specification asks for two of the three datasets; we ran all three (the third marked ‡ throughout) precisely so this choice could be made on evidence instead of blind. **Selected pair: DTD + FGVC-Aircraft.** The selection is *structural* — it rests on properties of the official splits that the completed runs made concrete, not on ranking test accuracies:
+
+1. **Flowers-102's training-size axis is degenerate.** Its official training split holds exactly 10 images per class, so its 10-shot setting *is* its full setting: the cell below shows the image-prototype head (deterministic) scores identically at 10-shot and full, and the probe's three 10-shot "subset seeds" all select the same images, so its 10-shot spread is exactly zero. Its accuracy-vs-training-size curve has two distinct points where the other datasets have three — and that axis is exactly the one Stage 2 argues along.
+2. **DTD and FGVC-Aircraft give three genuinely distinct K settings** (40 and ~33 training images per class), so 5-shot, 10-shot and full are all informative.
+3. **FGVC-Aircraft carries the DINOv2 requirement and the headroom.** It is the fine-grained, lowest-accuracy task — the largest validation probe-vs-prototype gap (35.7 points, table above) and therefore the most room for a Flow-Matching layer to demonstrate a gain.
+4. **Flowers-102's test split is class-imbalanced** (20–238 images per class), making its top-1 the least clean single number of the three (§5.1, macro vs top-1).
+
+Flowers-102 stays in this report as the ‡ extension — the degeneracy is instructive and the numbers are published — but Stage 2 and Stage 3 build on DTD + FGVC-Aircraft.
+"""),
+    ("code", """
+splits = pd.read_csv(REPO / "results" / "metrics" / "dataset_splits.csv")
+train_pc = splits[splits["split"] == "train"].set_index("dataset")["per_class_median"]
+
+s = pd.read_csv(REPO / "results" / "metrics" / "summary.csv")
+rows = []
+for ds in ("dtd", "fgvc_aircraft", "flowers102"):
+    # ResNet-18 is the one encoder present on every dataset, so the rows are comparable.
+    # NB: s["head"], not s.head — .head is the DataFrame method.
+    proto = s[(s["dataset"] == ds) & (s["encoder"] == "resnet18")
+              & (s["head"] == "image_prototype")].set_index("k_shot")
+    probe = s[(s["dataset"] == ds) & (s["encoder"] == "resnet18")
+              & (s["head"] == "linear_probe")].set_index("k_shot")
+    rows.append({
+        "Dataset": dataset_label(ds),
+        "Train imgs/class": int(train_pc[ds]),
+        "Prototype: full − 10-shot (pts)": round(100 * (proto.loc["full", "mean_acc"] - proto.loc["10shot", "mean_acc"]), 2),
+        "Probe: full − 10-shot (pts)": round(100 * (probe.loc["full", "mean_acc"] - probe.loc["10shot", "mean_acc"]), 2),
+        "Probe 10-shot spread (± pts)": round(100 * probe.loc["10shot", "std_acc"], 2),
+    })
+print("Pair-selection evidence — the 10-shot ≡ full degeneracy is a property of the split, visible in the runs:")
+display(pd.DataFrame(rows))
+"""),
+    ("markdown", """
 ### Limitations
 
 - Frozen encoders bound absolute accuracy by design; no adaptation of the representation is attempted at this stage.
@@ -76,7 +111,7 @@ display(pd.DataFrame(rows))
 
 | Item | Status | Note |
 |---|---|---|
-| Third dataset (Flowers-102) | extension ‡ | spec allows any two; our selected pair (DTD + FGVC-Aircraft) is marked and readable on its own |
+| Third dataset (Flowers-102) | extension ‡ | spec allows any two; running all three let the pair be *chosen on evidence* — DTD + FGVC-Aircraft, confirmed post-results on structural grounds (decision above) |
 | Both prototype branches | extension | spec asks for one; implementing both let the Stage-2 branch be chosen on methodological + validation evidence |
 | Linear-probe configuration | **as specified** | AdamW / 1e-3 / 1e-4 / 64 / ≤200 epochs / best-val-accuracy checkpoint, unchanged |
 | DINOv2 coverage | **as specified** | one dataset (FGVC-Aircraft) |

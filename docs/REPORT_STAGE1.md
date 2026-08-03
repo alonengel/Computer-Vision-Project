@@ -36,7 +36,7 @@ The specification allows any two of the three datasets; we run all three and mar
 
 (Generated into `results/metrics/dataset_splits.csv`. Flowers-102's test split is class-imbalanced, 20–238 images per class, as published.)
 
-Our selected pair is **DTD + FGVC-Aircraft**, chosen because their training splits (40 and ~33 images per class) make $K \in \{5, 10, \text{full}\}$ three genuinely distinct settings. Flowers-102's official training split holds exactly 10 images per class, so for that dataset the 10-shot setting *is* the full setting — a structural degeneracy we report rather than hide.
+Our selected pair is **DTD + FGVC-Aircraft**, chosen because their training splits (40 and ~33 images per class) make $K \in \{5, 10, \text{full}\}$ three genuinely distinct settings. Flowers-102's official training split holds exactly 10 images per class, so for that dataset the 10-shot setting *is* the full setting — a structural degeneracy we report rather than hide. The pair was provisional until the runs completed; §4 records its confirmation on the evidence (ADR 0006).
 
 ### 2.2 Training-set sizes and subset sampling
 
@@ -208,6 +208,8 @@ Corresponding figures for the remaining dataset–encoder combinations are in `r
 
 Both branches are implemented and reported, so this selection can be revisited without re-running anything.
 
+**Which two datasets carry forward — confirmed on structural evidence, never test accuracy.** The specification asks for two of the three datasets; we ran all three (§1, ADR 0005) precisely so this choice could be made on evidence rather than blind. The completed runs confirm the provisional pair: **DTD + FGVC-Aircraft** (ADR 0006). The evidence is structural — properties of the official splits that the runs made concrete, not a ranking of test accuracies: (i) Flowers-102's training split holds exactly 10 images per class, so its 10-shot setting *is* its full setting — the deterministic prototype head scores identically at both (75.22 = 75.22), the probe's three 10-shot "subset seeds" select the same images and carry exactly zero spread (83.22 ± 0.00), and its accuracy-versus-training-size curve has two distinct points where the other datasets have three, which is precisely the axis Stage 2 argues along; (ii) DTD (40 images/class) and FGVC-Aircraft (~33/class) give three genuinely distinct K settings; (iii) FGVC-Aircraft carries the required DINOv2 encoder and the largest validation headroom (35.7 points); (iv) Flowers-102's class-imbalanced test split (20–238 images per class) makes its top-1 the least clean single number of the three (§3.1). Flowers-102 remains in this report as the ‡ extension; Stages 2 and 3 build on the selected pair.
+
 **Stage-2/3 handoff.** The concrete configuration each later stage builds on, per dataset — encoder selected by validation accuracy of the full-split probe, prototype target fixed by the branch selection above, and the linear-probe baseline as the already-published one-time test read-out (generated into `results/metrics/handoff_table.md`):
 
 | Dataset | Selected encoder (by validation) | Stage-2 prototype target (branch A) | Validation headroom (probe − prototypes, full) | Stage-3 baseline: linear probe, full split (test) |
@@ -232,7 +234,7 @@ Stage 2 trains the Flow Matching model to transport frozen embeddings toward the
 
 | Item | Status | Justification |
 |---|---|---|
-| Third dataset (Flowers-102) | extension ‡ | the spec allows any two; the third is cheap, and its 10-images-per-class training split is an instructive degenerate case. Our selected pair (DTD + FGVC-Aircraft) is marked and can be read on its own. |
+| Third dataset (Flowers-102) | extension ‡ | the spec allows any two; the third is cheap, and its 10-images-per-class training split is an instructive degenerate case. Running all three let the pair be chosen on evidence: DTD + FGVC-Aircraft, confirmed post-results on structural grounds (§4, ADR 0006). |
 | Both prototype branches | extension | the spec asks for one; implementing both lets the Stage-2 branch be chosen on evidence. The exactly-compliant subset is the linear probe plus either branch. |
 | Linear-probe configuration | as specified | AdamW / 1e-3 / 1e-4 / 64 / 200 epochs / best-val-accuracy checkpoint, unchanged. |
 | DINOv2 coverage | as specified | one dataset (FGVC-Aircraft). |

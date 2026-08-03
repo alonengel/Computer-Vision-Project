@@ -1,6 +1,8 @@
 # ADR 0005 — Group choices within the specification's degrees of freedom
 
-**Status:** accepted (2026-07-24)
+**Status:** accepted (2026-07-24). The two selections this ADR left open on evidence
+— which pair carries forward and which prototype branch — were confirmed post-results
+in ADR 0006 (2026-08-03): DTD + FGVC-Aircraft, Option A.
 
 **Context.** The Stage-1 specification leaves three decisions to the group: which two of the three datasets to use, which of the two prototype-based branches to implement alongside the required linear probe, and which single dataset gets the DINOv2 ViT-S/14 encoder.
 

@@ -90,6 +90,14 @@ User-directed review of `stage1_presentation.ipynb` against the spec. Audited th
 
 **Verification:** notebook rebuilt — 34 cells, all 15 code cells executed, zero error outputs; feature figures regenerated (class-order asserts green); extended repro check green (27 summary rows + 27 prediction files + 4 generated tables); `git diff` on the metrics confirms the only change beyond the new `handoff_table.md` and the proto `val_acc` column is one footnote sentence — **every reported number is unchanged**.
 
+## 2026-08-03 — Dataset pair confirmed post-results: DTD + FGVC-Aircraft (ADR 0006)
+
+User decision after re-reading `_docs/stage_1.pdf`'s degrees of freedom (two datasets, one prototype branch): **keep the full three-dataset / two-branch superset in the Stage-1 deliverable, but make both selections explicit, post-results decisions** rather than a-priori flags. ADR 0006 written recording both: the pair **DTD + FGVC-Aircraft** (ADR 0005's provisional `spec_selected` pair, now confirmed on evidence) and the branch **Option A** (already decided in report §4 / notebook §6; the ADR consolidates it into the decision trail).
+
+The pair evidence is deliberately **structural, never a test-accuracy ranking** (avoids any selection-on-test smell): (i) Flowers-102's 10-images-per-class training split makes 10-shot ≡ full — visible in the runs as the deterministic prototype head scoring identically at both settings and the probe's three 10-shot "subset seeds" carrying exactly zero spread — so its accuracy-vs-training-size curve has two distinct points where the others have three, and that axis is what Stage 2 argues along; (ii) DTD/FGVC give three genuinely distinct K settings; (iii) FGVC carries DINOv2 + the 35.7-pt validation headroom; (iv) Flowers' class-imbalanced test split makes its top-1 the least clean single number.
+
+**Where recorded:** ADR 0006 (+ status pointer in ADR 0005); report — §1 forward-pointer, new §4 paragraph "Which two datasets carry forward", §6 deviations row updated; notebook §6 — new "Which two datasets carry forward — decision" markdown + evidence cell (train imgs/class and the full−10-shot gaps / 10-shot spread from `dataset_splits.csv` + `summary.csv`, computed live, ResNet-18 rows for cross-dataset comparability), deviations row updated. Flowers-102 stays ‡ everywhere; no numbers, figures or config changed (`spec_selected` flags already encoded the pair).
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*
