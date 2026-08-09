@@ -45,6 +45,7 @@ def branch_table(target):
     lines = ["| Dataset | Encoder | Head | " + " | ".join(K_HEAD[k] for k in K_COLS) + " |",
              "|---|---|---|---|---|---|"]
     for (ds, enc), g in g_all.groupby(["dataset", "encoder"], sort=False):
+        ds_cell = f"{dataset_label(ds)}{mark}"
         best = {k: max(g[g["k_shot"] == k]["mean_acc"].max(),
                        g[g["k_shot"] == k]["baseline_mean"].max())
                 for k in K_COLS}
@@ -66,7 +67,7 @@ def branch_table(target):
             cells = [(f"**{txt}**" if np.isclose(zs["mean_acc"], best[k]) else txt)
                      for k in K_COLS]
             base_label = f"Stage-1 {head_label('zeroshot_clip')} (reference, K-independent)"
-        lines.append(f"| {dataset_label(ds)} | {encoder_label(enc, short=True)} "
+        lines.append(f"| {ds_cell} | {encoder_label(enc, short=True)} "
                      f"| {base_label} | " + " | ".join(cells) + " |")
         for head, T in HEAD_ORDER:
             cells = []
@@ -76,7 +77,7 @@ def branch_table(target):
                 if not r.empty and np.isclose(r.iloc[0]["mean_acc"], best[k]):
                     txt = f"**{txt}**"
                 cells.append(txt)
-            lines.append(f"| {dataset_label(ds)} | {encoder_label(enc, short=True)} "
+            lines.append(f"| {ds_cell} | {encoder_label(enc, short=True)} "
                          f"| {head_label(head)}, T = {T} | " + " | ".join(cells) + " |")
     lines.append("")
     if target == "image_prototype":

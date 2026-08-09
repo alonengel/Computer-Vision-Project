@@ -19,7 +19,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np
 import pandas as pd
-import torch
 import torch.nn.functional as F
 
 from make_figures import viz_selection
@@ -32,6 +31,12 @@ from src.visualize import (STAGE2_COLORS, TARGET_NAMES, dataset_label, encoder_l
                            fm_training_curves, stage2_accuracy_chart)
 
 REP_K, REP_SEED, REP_T = "10shot", 0, 12  # representative setting, fixed a priori
+
+
+def target_label(target):
+    """Display name for a transport target; the CLIP branch carries its ‡ mark."""
+    from src.visualize import TARGET_NAMES
+    return TARGET_NAMES[target] + (" ‡" if target == "clip_text" else "")
 
 
 def s2_pairs():
@@ -92,12 +97,12 @@ def curve_charts():
                   ("Rolled-out FM, T = 12", STAGE2_COLORS[("fm_rollout", 12)],
                    _curve(ds, enc, target, "rollout", REP_K, REP_SEED, T=12))]
         panels.append({"title": f"{dataset_label(ds)} — {encoder_label(enc, short=True)}"
-                                f"\n(toward {TARGET_NAMES[target]})", "curves": curves})
+                                f"\n(toward {target_label(target)})", "curves": curves})
     for i in range(0, len(panels), 3):
         print("figure:", fm_training_curves(
             panels[i:i + 3], f"stage2_curves_{i // 3}.png",
             "FM training loss — representative 10-shot run (subset seed 0); "
-            "final-epoch model is used (no checkpoint selection)"))
+            "reported checkpoint = minimum-training-loss epoch (ADR 0007 §7 fallback)"))
 
     # stability criterion over all full-run curves
     unstable = []
@@ -158,7 +163,7 @@ def feature_charts():
                   {"title": f"After Rolled-out FM (T = {REP_T})", "xy": xy2, "labels": y,
                    "proto_xy": pxy}]
         proto_kind = ("training-subset image prototypes (K = 10, seed 0)"
-                      if target == "image_prototype" else "CLIP text prototypes")
+                      if target == "image_prototype" else "CLIP text prototypes ‡")
         print("figure:", feature_projection(
             panels, sel_names,
             f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: features before "
@@ -188,7 +193,7 @@ def traj_charts(n_examples=4):
         print("figure:", flow_trajectory_chart(
             panels, bg, sel_names,
             f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: Euler flow "
-            f"trajectories toward {TARGET_NAMES[target]}\n(joint PCA plane shared with "
+            f"trajectories toward {target_label(target)}\n(joint PCA plane shared with "
             f"the feature-comparison figure; background: original test features; "
             f"{n_examples} representative examples, 10-shot models, subset seed 0)",
             f"stage2_traj_{ds}_{enc}_{target}.png"))

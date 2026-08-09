@@ -1,8 +1,10 @@
 CELLS = [
     ("markdown", """
-## 4 · Training curves and stability
+## 4 · Training curves and stability — and the one contingency that triggered
 
-The spec's stated purpose for these curves is to verify that training is **stable** and that both approaches reach reasonable solutions. Since Stage-2 FM uses the final-epoch model (no checkpoint selection, §1), stability is a load-bearing claim — so it is not read off two representative plots only: the cell below re-evaluates the a-priori criterion from ADR 0007 §7 over **every** saved full-run curve. A run counts as *unstable* only if its final-epoch training loss exceeds $1.05\\times$ its own running minimum (divergence, not plateau); the fixed contingency — never triggered post-hoc — would be minimum-training-loss epoch selection for **all** models uniformly.
+The spec's stated purpose for these curves is to verify that training is **stable** and that both approaches reach reasonable solutions. Stability is a load-bearing claim here (no validation checkpointing exists to absorb a bad ending), so it is not read off two representative plots: the cell below evaluates the a-priori criterion from ADR 0007 §7 over **every** saved training curve — a run counts as *unstable* if its final-epoch training loss exceeds $1.05\\times$ its own running minimum (divergence, not plateau).
+
+**The criterion fired.** On the first (final-epoch) grid, 3 of 135 runs genuinely diverged — all rolled-out models at K = full, the worst at $62\\times$ its minimum with test accuracy collapsed to ~6% (recorded at trigger time; the first grid's artifacts were superseded by the re-run) — alongside 20 marginal 1.05–1.13× cases (18 standard-FM runs, where random-$t$ resampling makes the last epoch noisy, and 2 rolled-out runs just past the threshold). As pre-registered, the uniform fallback was applied: **every model, both modes and both branches, was re-trained/selected at its minimum-training-loss epoch**, and the whole grid re-run. The first grid's numbers were never published. All numbers in this notebook come from the fallback grid; the cell below documents the divergence pattern that triggered it (final vs minimum loss on the *saved* curves — the checkpoint used is always the minimum).
 
 Note the two objectives live on different scales (standard FM regresses velocities along the whole path; rolled-out FM penalizes only the final-state distance), hence the log axis; curve *shapes*, not absolute levels, are the comparable quantity.
 """),
@@ -17,18 +19,17 @@ import json as _json
 
 curve_dir = REPO / "results" / "artifacts" / "curves_stage2"
 curves = [p for p in sorted(curve_dir.glob("*.json")) if "_smoke" not in p.name]
-unstable = []
+rows = []
 for p in curves:
     with open(p) as f:
         h = _json.load(f)["train_loss"]
-    if h[-1] > 1.05 * min(h):
-        unstable.append(p.name)
-print(f"Stability criterion (ADR 0007 §7) over all {len(curves)} full-run curves: "
-      f"{len(unstable)} unstable")
-for n in unstable:
-    print("  UNSTABLE:", n)
-if not unstable:
-    print("=> every model's final-epoch loss is within 5% of its running minimum; "
-          "the final-epoch policy stands, no contingency triggered.")
+    ratio = h[-1] / min(h)
+    if ratio > 1.05:
+        rows.append({"curve": p.name, "final / min loss": round(ratio, 2)})
+rows.sort(key=lambda r: -r["final / min loss"])
+print(f"Stability criterion (ADR 0007 §7) over all {len(curves)} curves: "
+      f"{len(rows)} exceed 1.05x (checkpoint used = min-loss epoch, so divergent "
+      f"endings do not enter any reported number)")
+display(pd.DataFrame(rows[:10]))
 """),
 ]

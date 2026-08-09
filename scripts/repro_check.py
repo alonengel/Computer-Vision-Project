@@ -38,28 +38,44 @@ def check_predictions(runs):
     return bad
 
 
-def check_tables():
-    """The committed markdown tables must equal what the generator produces now."""
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location(
-        "make_tables", Path(__file__).resolve().parent / "make_tables.py")
-    mt = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mt)
-
-    bad = 0
+def _regenerate_and_compare(script_name, table_names):
+    """Snapshot the committed tables, re-run the generator, and diff content —
+    a hand-edited table must be flagged, not silently repaired."""
     import contextlib
+    import importlib.util
     import io
 
-    with contextlib.redirect_stdout(io.StringIO()):
-        mt.main()  # rewrites the three tables from summary.csv / raw arrays
-    for name in ("accuracy_table.md", "paired_heads_table.md", "macro_accuracy_table.md",
-                 "handoff_table.md"):
+    before = {}
+    for name in table_names:
         path = metrics_dir() / name
-        if not path.exists():
+        before[name] = path.read_text(encoding="utf-8") if path.exists() else None
+
+    spec = importlib.util.spec_from_file_location(
+        script_name, Path(__file__).resolve().parent / f"{script_name}.py")
+    mt = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mt)
+    with contextlib.redirect_stdout(io.StringIO()):
+        mt.main()
+
+    bad = 0
+    for name in table_names:
+        path = metrics_dir() / name
+        if before[name] is None:
             bad += 1
-            print(f"MISSING table {name}")
-    print(f"tables: regenerated from artifacts, {bad} missing")
+            print(f"MISSING table {name} (created only now by the generator)")
+        elif before[name] != path.read_text(encoding="utf-8"):
+            bad += 1
+            print(f"MISMATCH table {name}: committed content differed from what "
+                  f"the generator produces (now overwritten with the regenerated one)")
+    return bad
+
+
+def check_tables():
+    """The committed markdown tables must equal what the generator produces now."""
+    bad = _regenerate_and_compare(
+        "make_tables", ("accuracy_table.md", "paired_heads_table.md",
+                        "macro_accuracy_table.md", "handoff_table.md"))
+    print(f"tables: regenerated from artifacts and compared, {bad} problems")
     return bad
 
 
@@ -70,8 +86,6 @@ def check_stage2():
     if not (metrics_dir() / "runs_stage2.csv").exists():
         print("stage2: no runs_stage2.csv yet — skipped")
         return 0
-    import importlib.util
-
     from src.evaluation import load_predictions
 
     runs1 = pd.read_csv(metrics_dir() / "runs.csv")
@@ -132,21 +146,11 @@ def check_stage2():
             bad += 1
             print(f"MISMATCH stage2 predictions {name}")
 
-    # (d) markdown tables regenerate
-    spec = importlib.util.spec_from_file_location(
-        "make_tables_stage2", Path(__file__).resolve().parent / "make_tables_stage2.py")
-    mt = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mt)
-    import contextlib
-    import io
-
-    with contextlib.redirect_stdout(io.StringIO()):
-        mt.main()
-    for name in ("stage2_image_prototype_table.md", "stage2_clip_text_table.md",
-                 "stage2_paired_delta_table.md"):
-        if not (metrics_dir() / name).exists():
-            bad += 1
-            print(f"MISSING table {name}")
+    # (d) markdown tables regenerate AND match the committed content
+    bad += _regenerate_and_compare(
+        "make_tables_stage2", ("stage2_image_prototype_table.md",
+                               "stage2_clip_text_table.md",
+                               "stage2_paired_delta_table.md"))
 
     print(f"stage2: {len(summary2)} summary rows, {len(runs2)} run rows, "
           f"{checked} prediction files checked, {bad} problems")

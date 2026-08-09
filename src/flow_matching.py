@@ -17,6 +17,8 @@ classifier acts in; prototypes are unit-norm by construction (ADR 0007 §3).
 Losses are per-sample squared L2 norms (summed over feature dimensions, averaged
 over the batch), matching the spec's ||.||_2^2 exactly.
 """
+import copy
+
 import torch
 import torch.nn.functional as F
 
@@ -57,7 +59,8 @@ class FlowMatchingHead:
     `prototypes` [C, D]: the Stage-1 class prototypes for this exact setting
     (image-derived from the selected training subset, or CLIP text prototypes).
     Training config comes from config/config.json `stage2.training` — the Stage-1
-    probe recipe, final-epoch model, no validation-based selection (ADR 0007 §7).
+    probe recipe; checkpoint = minimum-training-loss epoch (the ADR 0007 §7
+    contingency, triggered), never validation- or test-based.
     """
 
     def __init__(self, prototypes, mode, T=None, seed=0, hidden=None, **overrides):
@@ -75,6 +78,7 @@ class FlowMatchingHead:
         _seeded_init(self.model, g)
         self.model = self.model.to(self.device)
         self.history = None
+        self.best = None
 
     def _rollout(self, z, T):
         for k in range(T):
@@ -92,6 +96,7 @@ class FlowMatchingHead:
         g = torch.Generator().manual_seed(self.seed)  # batch order + t draws
         n, bs = len(Z), cfg["batch_size"]
         hist = {"epoch": [], "train_loss": []}
+        best_loss, best_state, best_epoch = float("inf"), None, -1
 
         for epoch in range(cfg["max_epochs"]):
             self.model.train()
@@ -112,9 +117,19 @@ class FlowMatchingHead:
                 total += loss.item() * len(idx)
             hist["epoch"].append(epoch)
             hist["train_loss"].append(total / n)
+            if total / n < best_loss:
+                best_loss, best_epoch = total / n, epoch
+                if cfg["checkpoint_selection"] == "min_train_loss":
+                    best_state = copy.deepcopy(self.model.state_dict())
 
+        # ADR 0007 §7 contingency (triggered 2026-08-09, see status note there):
+        # the selected checkpoint is the minimum-training-loss epoch, uniformly
+        # for every model. No validation or test data is involved.
+        if cfg["checkpoint_selection"] == "min_train_loss" and best_state is not None:
+            self.model.load_state_dict(best_state)
         self.model.eval()
         self.history = hist
+        self.best = {"epoch": best_epoch, "train_loss": best_loss}
         return self
 
     @torch.no_grad()

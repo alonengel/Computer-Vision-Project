@@ -276,7 +276,7 @@ def fm_training_curves(panels, name, suptitle):
         ax.set_title(p["title"], fontsize=12)
         ax.set_xlabel("epoch")
         ax.legend(fontsize=9.5)
-    axes[0][0].set_ylabel("training loss (per-sample squared $L_2$, log scale)")
+    axes[0][0].set_ylabel("training loss (log scale)")
     fig.suptitle(suptitle, y=1.04, fontsize=13.5)
     fig.tight_layout()
     return _save(fig, name)

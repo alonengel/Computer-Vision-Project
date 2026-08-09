@@ -142,7 +142,9 @@ def main(smoke=False):
                                      "seed": seed, "n_train": len(idx),
                                      "test_acc": acc, "baseline_acc": base,
                                      "delta_acc": acc - base,
-                                     "final_train_loss": head.history["train_loss"][-1]})
+                                     "final_train_loss": head.history["train_loss"][-1],
+                                     "checkpoint_epoch": head.best["epoch"],
+                                     "checkpoint_train_loss": head.best["train_loss"]})
                         if run == 0:
                             save_predictions(f"run2{tag}_{ds}_{enc}_{target}_"
                                              f"{head_name}_T{T_eval}_{k_label(k)}", pred, yte)

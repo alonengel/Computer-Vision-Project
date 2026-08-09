@@ -89,7 +89,7 @@
       "weight_decay": 0.0001,
       "batch_size": 64,
       "max_epochs": 200,
-      "checkpoint_selection": "final_epoch"
+      "checkpoint_selection": "min_train_loss"
     },
     "feature_space": "l2_normalized"
   }

@@ -1,6 +1,20 @@
 # ADR 0007 — Stage 2 design decisions, fixed a priori
 
-**Status:** accepted (2026-08-09), before any Stage-2 training run
+**Status:** accepted (2026-08-09). Authored and smoke-tested before any full
+training run; the infrastructure commit (`cbceb53`) landed mid-grid, but git
+confirms the §7 contingency text and the `final_epoch` policy were committed
+before any full-split (i.e. any subsequently-divergent) run had completed.
+**§7 contingency TRIGGERED (2026-08-09, same day, after the first full grid):**
+the stability sweep over all 135 training curves found 23 exceeding the 1.05×
+criterion — 20 marginal (1.05–1.13×, last-epoch noise from standard FM's random-t
+resampling) and 3 genuine divergences (all rolled-out at K = full: 62.4× on
+FGVC-Aircraft/CLIP‡ T = 12 seed 1, whose test accuracy collapsed to 6%; 2.9× and
+1.26× on FGVC-Aircraft/ResNet-18 T = 4). As pre-registered, the uniform fallback
+was applied: **every** Stage-2 model — both modes, both branches — now uses the
+minimum-training-loss epoch (`checkpoint_selection: "min_train_loss"` in config),
+no validation or test data involved, and the entire grid was re-run under the
+fallback. The first grid's numbers were never published; the criterion, fallback,
+and trigger are reported in the report and notebook.
 
 **Context.** `_docs/stage_2.pdf` adds a flow-matching layer to the Stage-1 prototype
 classifier: standard FM (`z_t = (1−t)z_i + t·p_{y_i}`, target velocity `p − z`,
