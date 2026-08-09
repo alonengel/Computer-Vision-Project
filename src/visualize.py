@@ -26,7 +26,15 @@ ENCODER_NAMES = {"resnet18": "ResNet-18 (ImageNet-1K)",
                  "clip_rn50": "CLIP RN50"}
 ENCODER_SHORT = {"resnet18": "ResNet-18", "dinov2_vits14": "DINOv2", "clip_rn50": "CLIP RN50"}
 HEAD_NAMES = {"linear_probe": "Linear probe", "image_prototype": "Image prototypes",
-              "zeroshot_clip": "Zero-shot CLIP"}
+              "zeroshot_clip": "Zero-shot CLIP",
+              "fm_standard": "Standard FM", "fm_rollout": "Rolled-out FM"}
+TARGET_NAMES = {"image_prototype": "image prototypes", "clip_text": "CLIP text prototypes"}
+
+# Stage-2 series styles: blues = standard FM, oranges = rolled-out FM; darker =
+# more Euler steps. The Stage-1 baseline is always the neutral dashed line.
+STAGE2_COLORS = {("fm_standard", 4): "#56B4E9", ("fm_standard", 12): "#0173B2",
+                 ("fm_rollout", 4): "#E69F00", ("fm_rollout", 12): "#D55E00"}
+STAGE2_BASELINE_COLOR = "#333333"
 
 # One fixed colour per encoder and one linestyle/marker per head, used identically
 # in every chart so a series can be identified across figures.
@@ -211,6 +219,107 @@ def feature_projection(panels, class_names, title, name):
     labels_.append("class prototype")
     fig.legend(handles, labels_, loc="upper center", bbox_to_anchor=(0.5, 0.0),
                ncol=min(6, len(labels_)), fontsize=10, frameon=True, markerscale=1.6)
+    fig.suptitle(title, y=1.02, fontsize=13.5)
+    fig.tight_layout()
+    return _save(fig, name)
+
+
+# --------------------------------------------------------------------------- #
+# Stage 2 — FM vs baseline accuracy, FM training curves, flow trajectories
+# --------------------------------------------------------------------------- #
+
+def stage2_accuracy_chart(dataset, encoder, target, rows, baseline, name, subtitle=""):
+    """Accuracy vs training-set size for one (dataset, encoder, target) setting.
+
+    rows: summary_stage2 rows for this setting (head, T, k_shot, mean/std).
+    baseline: {"series": [(k_shot, mean, std, n_runs)]} for the image-prototype
+    baseline, or {"hline": acc} for the zero-shot CLIP reference.
+    """
+    fig, ax = plt.subplots(figsize=(8.6, 5.4))
+    x = np.arange(len(K_ORDER))
+    if "series" in baseline:
+        ks, means, stds, ns = zip(*baseline["series"])
+        order = [ks.index(k) for k in K_ORDER]
+        ax.errorbar(x, [100 * means[i] for i in order],
+                    yerr=[100 * stds[i] if ns[i] > 1 else 0 for i in order],
+                    marker="s", linestyle="--", capsize=4, linewidth=2.2,
+                    color=STAGE2_BASELINE_COLOR,
+                    label=f"Stage-1 baseline: {head_label('image_prototype')}")
+    else:
+        ax.axhline(100 * baseline["hline"], linestyle=":", linewidth=2.2,
+                   color=STAGE2_BASELINE_COLOR,
+                   label="Stage-1 reference: Zero-shot CLIP (no training images)")
+    for (head, T), g in rows.groupby(["head", "T"]):
+        g = g.set_index("k_shot").reindex(K_ORDER)
+        ax.errorbar(x, 100 * g["mean_acc"], yerr=100 * g["std_acc"], marker="o",
+                    linestyle="-" if head == "fm_standard" else "-.",
+                    capsize=4, linewidth=2.0, color=STAGE2_COLORS[(head, T)],
+                    label=f"{head_label(head)}, T = {T}")
+    ax.set_xticks(x)
+    ax.set_xticklabels([K_LABELS[k] for k in K_ORDER])
+    ax.set_xlabel("training images per class (K)")
+    ax.set_ylabel("top-1 test accuracy (%)")
+    ax.set_title(f"{dataset_label(dataset)} — {encoder_label(encoder, short=True)}, "
+                 f"FM toward {TARGET_NAMES[target]}\n{subtitle}", fontsize=12)
+    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=10.5, frameon=True)
+    return _save(fig, name)
+
+
+def fm_training_curves(panels, name, suptitle):
+    """panels: list of dicts with 'title' and 'curves': [(label, color, history)].
+    Training loss only (Stage-2 FM uses no validation-based selection); log scale
+    because the two objectives live on different magnitudes."""
+    fig, axes = plt.subplots(1, len(panels), figsize=(6.0 * len(panels), 4.4), squeeze=False)
+    for ax, p in zip(axes[0], panels):
+        for label, color, h in p["curves"]:
+            ax.semilogy(h["epoch"], h["train_loss"], label=label, color=color, lw=2)
+        ax.set_title(p["title"], fontsize=12)
+        ax.set_xlabel("epoch")
+        ax.legend(fontsize=9.5)
+    axes[0][0].set_ylabel("training loss (per-sample squared $L_2$, log scale)")
+    fig.suptitle(suptitle, y=1.04, fontsize=13.5)
+    fig.tight_layout()
+    return _save(fig, name)
+
+
+def flow_trajectory_chart(panels, bg, class_names, title, name):
+    """Flow trajectories in a joint PCA plane (spec item 4).
+
+    bg: {'xy' [N,2], 'labels' [N], 'proto_xy' [C,2]} — shared background of test
+    features and prototypes. panels: list of {'title', 'trajs': [(class_idx,
+    xy [S+1, 2])]}. All coordinates must come from ONE jointly fitted projection.
+    """
+    palette = sns.color_palette("colorblind", n_colors=max(10, len(class_names)))
+    fig, axes = plt.subplots(1, len(panels), figsize=(6.8 * len(panels), 6.2), squeeze=False)
+    for ax, p in zip(axes[0], panels):
+        labels = np.asarray(bg["labels"])
+        for j in sorted(np.unique(labels)):
+            m = labels == j
+            ax.scatter(bg["xy"][m, 0], bg["xy"][m, 1], s=12, alpha=0.18,
+                       color=palette[j], marker="o")
+            ax.scatter(bg["proto_xy"][j, 0], bg["proto_xy"][j, 1], marker="*", s=430,
+                       color=palette[j], edgecolors="black", linewidths=1.3, zorder=5)
+        for class_idx, xy in p["trajs"]:
+            c = palette[class_idx]
+            ax.plot(xy[:, 0], xy[:, 1], color=c, lw=1.8, alpha=0.95, zorder=4)
+            ax.scatter(xy[1:-1, 0], xy[1:-1, 1], color=c, s=26, zorder=4,
+                       edgecolors="white", linewidths=0.5)
+            ax.scatter(xy[0, 0], xy[0, 1], color=c, s=90, marker="o",
+                       edgecolors="black", linewidths=1.2, zorder=6)
+            ax.scatter(xy[-1, 0], xy[-1, 1], color=c, s=110, marker="X",
+                       edgecolors="black", linewidths=1.2, zorder=6)
+        ax.set_title(p["title"], fontsize=12)
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+    from matplotlib.lines import Line2D
+
+    handles = [Line2D([], [], linestyle="", marker="o", markersize=10, color="#AAAAAA",
+                      markeredgecolor="black", label="original feature $\\hat{z}_0$"),
+               Line2D([], [], linestyle="", marker="X", markersize=11, color="#AAAAAA",
+                      markeredgecolor="black", label="transported feature $\\hat{z}_T$"),
+               Line2D([], [], linestyle="", marker="*", markersize=16, color="white",
+                      markeredgecolor="black", label="class prototype")]
+    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.0),
+               ncol=3, fontsize=10.5, frameon=True)
     fig.suptitle(title, y=1.02, fontsize=13.5)
     fig.tight_layout()
     return _save(fig, name)

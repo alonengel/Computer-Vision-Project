@@ -1,6 +1,7 @@
 # Data & caches (large, reproducible)
 data/
 results/features/
+results/artifacts/fm_models/
 *.pt.tmp
 
 # Python

@@ -1,0 +1,54 @@
+[
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "target": "image_prototype",
+    "head": "fm_standard",
+    "T": 4,
+    "k_shot": "5shot",
+    "n_runs": 1,
+    "mean_acc": 0.4654255211353302,
+    "std_acc": 0.0,
+    "baseline_mean": 0.4723404347896576,
+    "delta_mean": -0.006914913654327393
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "target": "image_prototype",
+    "head": "fm_rollout",
+    "T": 4,
+    "k_shot": "5shot",
+    "n_runs": 1,
+    "mean_acc": 0.46755319833755493,
+    "std_acc": 0.0,
+    "baseline_mean": 0.4723404347896576,
+    "delta_mean": -0.004787236452102661
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "clip_rn50",
+    "target": "clip_text",
+    "head": "fm_standard",
+    "T": 4,
+    "k_shot": "5shot",
+    "n_runs": 1,
+    "mean_acc": 0.23191489279270172,
+    "std_acc": 0.0,
+    "baseline_mean": 0.3978723287582397,
+    "delta_mean": -0.16595743596553797
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "clip_rn50",
+    "target": "clip_text",
+    "head": "fm_rollout",
+    "T": 4,
+    "k_shot": "5shot",
+    "n_runs": 1,
+    "mean_acc": 0.21595744788646698,
+    "std_acc": 0.0,
+    "baseline_mean": 0.3978723287582397,
+    "delta_mean": -0.1819148808717727
+  }
+]

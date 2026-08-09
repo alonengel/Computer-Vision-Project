@@ -1,0 +1,5 @@
+dataset,encoder,target,head,T,k_shot,n_runs,mean_acc,std_acc,baseline_mean,delta_mean
+dtd,resnet18,image_prototype,fm_standard,4,5shot,1,0.4654255211353302,0.0,0.4723404347896576,-0.006914913654327393
+dtd,resnet18,image_prototype,fm_rollout,4,5shot,1,0.46755319833755493,0.0,0.4723404347896576,-0.004787236452102661
+dtd,clip_rn50,clip_text,fm_standard,4,5shot,1,0.23191489279270172,0.0,0.3978723287582397,-0.16595743596553797
+dtd,clip_rn50,clip_text,fm_rollout,4,5shot,1,0.21595744788646698,0.0,0.3978723287582397,-0.1819148808717727

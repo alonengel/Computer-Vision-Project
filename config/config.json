@@ -68,5 +68,29 @@
   },
   "smoke": {
     "max_epochs": 5
+  },
+  "stage2": {
+    "_source_of_truth": "_docs/stage_2.pdf (Stage 2: Flow Matching to Class Prototypes); design decisions in docs/adr/0007",
+    "datasets": ["dtd", "fgvc_aircraft"],
+    "branches": {
+      "image_prototype": [["dtd", "resnet18"], ["fgvc_aircraft", "resnet18"], ["fgvc_aircraft", "dinov2_vits14"]],
+      "clip_text": [["dtd", "clip_rn50"], ["fgvc_aircraft", "clip_rn50"]]
+    },
+    "spec_selected_branch": "image_prototype",
+    "T_values": [4, 12],
+    "velocity_net": {
+      "hidden": [512, 512],
+      "activation": "silu",
+      "time_conditioning": "concat_scalar"
+    },
+    "training": {
+      "optimizer": "adamw",
+      "lr": 0.001,
+      "weight_decay": 0.0001,
+      "batch_size": 64,
+      "max_epochs": 200,
+      "checkpoint_selection": "final_epoch"
+    },
+    "feature_space": "l2_normalized"
   }
 }
