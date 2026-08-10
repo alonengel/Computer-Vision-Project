@@ -132,6 +132,8 @@ Rework (same section `s5b`, all integrity assertions unchanged): four separate t
 
 **Follow-up (same day) — class-palette separation.** User: the colourblind palette's near-duplicates are hard to tell apart (three orange-family, two pinks) — make one pink purple and one orange red. Added `class_palette()` in `src/visualize.py` as the **single source of truth** for class colours: colourblind base with `#D55E00` (vermillion) → `#D62728` (red) and `#CC78BC` (medium pink) → `#6A3D9A` (deep purple); `feature_projection`, `flow_trajectory_chart`, and the animation section all now use it, so class colours agree across every figure and animation of both stages (the spec's same-colours rule). Regenerated all class-coloured figures — Stage-1 `features_*.png` (7) and Stage-2 features/trajectories (10) + the four animation GIFs — and rebuilt + executed **both** notebooks (36 + 30 cells, 0 errors). Numbers untouched; repro check green.
 
+**Second follow-up — remaining orange pair.** User caught that `#DE8F05` (orange) vs `#CA9161` (light tan) still read as two oranges. Third swap in `class_palette()`: `#CA9161` → `#8C564B` (dark brown — dark-vs-bright contrast with the orange). All 17 class-coloured figures + 4 GIFs regenerated, both notebooks rebuilt and executed (0 errors), repro check green.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*

@@ -47,16 +47,17 @@ K_LABELS = {"5shot": "5", "10shot": "10", "full": "full"}
 
 def class_palette(n_classes):
     """Class colours for feature/trajectory visualizations: the colourblind
-    palette with two swaps for clearer separation (user request) — the
-    medium pink (#CC78BC) becomes a deep purple and the red-orange vermillion
-    (#D55E00) becomes a true red, so the orange-family (orange / red / tan)
-    and pink-family (purple / light pink) classes are tellable apart.
-    One shared source of truth so every figure and animation agrees."""
+    palette with three swaps for clearer separation (user request) — every
+    colour must be tellable apart at small marker sizes. The near-duplicates
+    are resolved as: vermillion -> true red, medium pink -> deep purple, and
+    light tan -> dark brown (the tan read as a second orange). One shared
+    source of truth so every figure and animation agrees."""
     from matplotlib.colors import to_rgb
 
     pal = list(sns.color_palette("colorblind", n_colors=max(10, n_classes)))
     pal[3] = to_rgb("#D62728")   # vermillion -> red
     pal[4] = to_rgb("#6A3D9A")   # medium pink -> deep purple
+    pal[5] = to_rgb("#8C564B")   # light tan -> dark brown (vs bright orange)
     return pal
 
 
