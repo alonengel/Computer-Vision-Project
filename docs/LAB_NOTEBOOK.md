@@ -124,6 +124,12 @@ User-requested (spec: `_docs/stage2_flow_animation_prompt.md`): an inline animat
 
 **Errors + fixes:** (1) mathtext legend labels raised `SyntaxWarning: invalid escape '\\h'` into the cell output — switched to raw strings, rebuilt; (2) suptitle/legend clipped in animation frames (animations render without `bbox_inches="tight"`) — moved all fixed text inside the canvas via `subplots_adjust`. Final state: notebook 30 cells, executed top-to-bottom, 0 errors/0 warnings; repro check green; git status confirms the only new artifact is the GIF — no existing table, metric, model or figure changed.
 
+## 2026-08-10 — Animation reworked per user feedback: per-example zoom + velocity arrows, GIF embedding
+
+User feedback on the first version: (a) the animation did not display in their notebook viewer — root cause: `to_jshtml()` outputs a JavaScript player, which VS Code's notebook renderer blocks; (b) one combined view of 4 points was too small to read — wanted **one example per animation, zoomed**; (c) wanted a **direction vector at every iteration**.
+
+Rework (same section `s5b`, all integrity assertions unchanged): four separate two-panel (Standard | Rolled-out) animations, one per representative example, axis limits fixed per example to its two trajectories + its prototype (identical limits in both panels, equal aspect); a black quiver arrow at each frame shows the projected direction of the current Euler step $\\tfrac{1}{T}v_θ(\\hat z_k, k/T)$ (hidden at the final state); display switched from the JS player to **base64-embedded GIFs** (`<img src="data:image/gif...">`) — plays in VS Code and Jupyter with no JavaScript and no path dependence, with the JS player kept only as a fallback if PillowWriter fails. Old combined GIF `git rm`'d; new artifacts `stage2_flow_anim_fgvc_aircraft_dinov2_vits14_T12_ex{0..3}.gif`. Caveat text extended: the arrow is the *projection* of the true 384-d step. Notebook rebuilt + executed top-to-bottom: 30 cells, 0 errors/0 warnings, all `[OK]` verifications green; no existing artifact changed.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*
