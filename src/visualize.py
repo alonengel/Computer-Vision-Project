@@ -45,6 +45,21 @@ K_ORDER = ["5shot", "10shot", "full"]
 K_LABELS = {"5shot": "5", "10shot": "10", "full": "full"}
 
 
+def class_palette(n_classes):
+    """Class colours for feature/trajectory visualizations: the colourblind
+    palette with two swaps for clearer separation (user request) — the
+    medium pink (#CC78BC) becomes a deep purple and the red-orange vermillion
+    (#D55E00) becomes a true red, so the orange-family (orange / red / tan)
+    and pink-family (purple / light pink) classes are tellable apart.
+    One shared source of truth so every figure and animation agrees."""
+    from matplotlib.colors import to_rgb
+
+    pal = list(sns.color_palette("colorblind", n_colors=max(10, n_classes)))
+    pal[3] = to_rgb("#D62728")   # vermillion -> red
+    pal[4] = to_rgb("#6A3D9A")   # medium pink -> deep purple
+    return pal
+
+
 def dataset_label(name):
     return DATASET_NAMES.get(name, name)
 
@@ -194,9 +209,9 @@ def feature_projection(panels, class_names, title, name):
     (done by the caller), so prototype positions are comparable to the points.
     Colours are fixed per class index across every panel and figure.
     """
-    # Colourblind-safe palette; marker shape also varies so class identity does
-    # not rest on hue alone.
-    palette = sns.color_palette("colorblind", n_colors=max(10, len(class_names)))
+    # Shared class palette (see class_palette); marker shape also varies so
+    # class identity does not rest on hue alone.
+    palette = class_palette(len(class_names))
     markers = ["o", "s", "^", "D", "v", "P", "X", "<", ">", "*"]
     fig, axes = plt.subplots(1, len(panels), figsize=(6.4 * len(panels), 6.0), squeeze=False)
     for ax, p in zip(axes[0], panels):
@@ -289,7 +304,7 @@ def flow_trajectory_chart(panels, bg, class_names, title, name):
     features and prototypes. panels: list of {'title', 'trajs': [(class_idx,
     xy [S+1, 2])]}. All coordinates must come from ONE jointly fitted projection.
     """
-    palette = sns.color_palette("colorblind", n_colors=max(10, len(class_names)))
+    palette = class_palette(len(class_names))
     fig, axes = plt.subplots(1, len(panels), figsize=(6.8 * len(panels), 6.2), squeeze=False)
     for ax, p in zip(axes[0], panels):
         labels = np.asarray(bg["labels"])

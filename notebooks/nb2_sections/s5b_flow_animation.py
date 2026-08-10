@@ -10,7 +10,6 @@ Everything is loaded from the saved Stage-2 artifacts — the trained velocity n
 import base64
 
 import matplotlib.pyplot as plt
-import seaborn as sns
 import torch
 import torch.nn.functional as F
 from matplotlib.animation import FuncAnimation, PillowWriter
@@ -19,7 +18,7 @@ from IPython.display import HTML
 
 sys.path.insert(0, str(REPO / "scripts"))
 from make_figures_stage2 import REP_T, _joint_pca, _rep_setting
-from src.visualize import dataset_label, encoder_label
+from src.visualize import class_palette, dataset_label, encoder_label
 
 ANIM_DS, ANIM_ENC, ANIM_TARGET = "fgvc_aircraft", "dinov2_vits14", "image_prototype"
 
@@ -66,7 +65,7 @@ print("[OK] first states = normalized pipeline inputs; final states match the "
       "transported features of the feature-comparison figure")
 print("[OK] no gradients during trajectory generation")
 
-palette = sns.color_palette("colorblind", n_colors=max(10, len(sel_names)))
+palette = class_palette(len(sel_names))  # shared with every feature/traj figure
 LEGEND = [
     Line2D([], [], marker="o", ls="", ms=10, mfc="none", mec="#555555", mew=2,
            label=r"original feature $\\hat{z}_0$"),
