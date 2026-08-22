@@ -20,7 +20,8 @@ for name in ("stage2_curves_0.png", "stage2_curves_1.png"):
 import json as _json
 
 curve_dir = REPO / "results" / "artifacts" / "curves_stage2"
-curves = [p for p in sorted(curve_dir.glob("*.json")) if "_smoke" not in p.name]
+curves = [p for p in sorted(curve_dir.glob("*.json"))
+          if "_smoke" not in p.name and "_raw" not in p.name]
 rows = []
 for p in curves:
     with open(p) as f:

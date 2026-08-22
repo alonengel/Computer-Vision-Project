@@ -20,6 +20,7 @@ switch ($Task) {
     }
     "check"    { & $PY scripts\repro_check.py }
     "run2"     { & $PY scripts\run_stage2.py }
+    "run2raw"  { & $PY scripts\run_stage2.py --raw }
     "smoke2"   { & $PY scripts\run_stage2.py --smoke }
     "tables2"  { & $PY scripts\make_tables_stage2.py }
     "figures2" { & $PY scripts\make_figures_stage2.py }

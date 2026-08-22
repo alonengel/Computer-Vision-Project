@@ -79,23 +79,21 @@ def check_tables():
     return bad
 
 
-def check_stage2():
-    """Stage-2 artifacts: summary re-derived from raw arrays, deltas re-derived
-    from Stage-1 runs.csv, run-0 prediction files reproduce their accuracies,
-    and the committed markdown tables regenerate. Skipped until Stage 2 has run."""
-    if not (metrics_dir() / "runs_stage2.csv").exists():
-        print("stage2: no runs_stage2.csv yet — skipped")
-        return 0
+def check_stage2_variant(suffix):
+    """One Stage-2 results variant ("" = published normalized grid, "_raw" =
+    the literal-spec raw-feature version): summary re-derived from raw arrays,
+    deltas re-derived from Stage-1 runs.csv, run-0 prediction files reproduce
+    their accuracies."""
     from src.evaluation import load_predictions
 
     runs1 = pd.read_csv(metrics_dir() / "runs.csv")
-    runs2 = pd.read_csv(metrics_dir() / "runs_stage2.csv")
-    summary2 = pd.read_csv(metrics_dir() / "summary_stage2.csv")
+    runs2 = pd.read_csv(metrics_dir() / f"runs_stage2{suffix}.csv")
+    summary2 = pd.read_csv(metrics_dir() / f"summary_stage2{suffix}.csv")
     bad = 0
 
     # (a) summary rows re-derived from raw arrays + runs table
     for _, row in summary2.iterrows():
-        name = (f"{row['head']}_{row['dataset']}_{row['encoder']}_{row['target']}"
+        name = (f"{row['head']}{suffix}_{row['dataset']}_{row['encoder']}_{row['target']}"
                 f"_T{row['T']}_{row['k_shot']}")
         raw = np.load(metrics_dir("raw") / f"{name}.npy")
         m, s = summarize(raw)
@@ -132,7 +130,7 @@ def check_stage2():
     # (c) run-0 prediction files
     checked = 0
     for _, row in runs2[runs2["run"] == 0].iterrows():
-        name = (f"run2_{row['dataset']}_{row['encoder']}_{row['target']}_"
+        name = (f"run2{suffix}_{row['dataset']}_{row['encoder']}_{row['target']}_"
                 f"{row['head']}_T{row['T']}_{row['k_shot']}")
         try:
             pred, target = load_predictions(name)
@@ -146,14 +144,28 @@ def check_stage2():
             bad += 1
             print(f"MISMATCH stage2 predictions {name}")
 
-    # (d) markdown tables regenerate AND match the committed content
-    bad += _regenerate_and_compare(
-        "make_tables_stage2", ("stage2_image_prototype_table.md",
-                               "stage2_clip_text_table.md",
-                               "stage2_paired_delta_table.md"))
-
-    print(f"stage2: {len(summary2)} summary rows, {len(runs2)} run rows, "
+    label = "stage2" + (suffix or "")
+    print(f"{label}: {len(summary2)} summary rows, {len(runs2)} run rows, "
           f"{checked} prediction files checked, {bad} problems")
+    return bad
+
+
+def check_stage2():
+    """Stage-2 checks for every present variant plus the generated tables.
+    Skipped until Stage 2 has run."""
+    if not (metrics_dir() / "runs_stage2.csv").exists():
+        print("stage2: no runs_stage2.csv yet — skipped")
+        return 0
+    bad = check_stage2_variant("")
+    if (metrics_dir() / "runs_stage2_raw.csv").exists():
+        bad += check_stage2_variant("_raw")
+
+    # markdown tables regenerate AND match the committed content
+    tables = ["stage2_image_prototype_table.md", "stage2_clip_text_table.md",
+              "stage2_paired_delta_table.md"]
+    if (metrics_dir() / "summary_stage2_raw.csv").exists():
+        tables += ["stage2_raw_image_prototype_table.md", "stage2_raw_clip_text_table.md"]
+    bad += _regenerate_and_compare("make_tables_stage2", tuple(tables))
     return bad
 
 

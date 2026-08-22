@@ -104,17 +104,18 @@ def curve_charts():
             "FM training loss — representative 10-shot run (subset seed 0); "
             "reported checkpoint = minimum-training-loss epoch (ADR 0007 §7 fallback)"))
 
-    # stability criterion over all full-run curves
+    # stability criterion over all published-grid curves (the raw-feature
+    # version's curves carry a _raw suffix and are reported in their own section)
+    curves = [p for p in sorted(artifacts_dir("curves_stage2").glob("*.json"))
+              if "_smoke" not in p.name and "_raw" not in p.name]
     unstable = []
-    for p in sorted(artifacts_dir("curves_stage2").glob("*.json")):
-        if "_smoke" in p.name:
-            continue
+    for p in curves:
         with open(p) as f:
             h = json.load(f)["train_loss"]
         if h[-1] > 1.05 * min(h):
             unstable.append((p.name, h[-1], min(h)))
     print(f"stability check (ADR 0007 §7): {len(unstable)} unstable "
-          f"of {len(list(artifacts_dir('curves_stage2').glob('*.json')))} curves")
+          f"of {len(curves)} curves")
     for name, fin, mn in unstable:
         print(f"  UNSTABLE {name}: final {fin:.4f} > 1.05 x min {mn:.4f}")
     return unstable

@@ -146,6 +146,14 @@ Rework (same section `s5b`, all integrity assertions unchanged): four separate t
 
 Notebook rebuilt + executed top-to-bottom: 32 cells, 0 errors/0 warnings; repro check green. Remaining instructor question (audit §9): whether normalized-input FM is acceptable as the primary formulation — the 18/18 control is the supporting evidence either way.
 
+## 2026-08-22 — Two full versions: the complete raw-feature (literal-spec) grid
+
+User request: not a control slice — **two complete versions**, with and without input normalization. Added `--raw` to `run_stage2.py` (tag `_raw`, `normalize=False`; identical protocol otherwise — every seed, both T, both branches, same prototypes/baselines/checkpoint rule) and re-ran the full 135-training grid on raw features (~1.5 h). The earlier seed-0 ablation (script + artifacts) was `git rm`'d as superseded; ADR 0007 addendum updated.
+
+**Result — the two versions diverge exactly where the geometry says they should:** on the **image-prototype branch the normalized version is better in all 36/36 cells**, mostly by double digits (worst gap −25.3 on DINOv2 full rollout T4; DTD full standard 43.6 raw vs 59.6 normalized), 27/60 raw cells fall below their own Stage-1 baseline, and raw training is less stable (33 vs 23 curves trip the 1.05× criterion; raw DINOv2-full rollout spreads reach ±10.4). On the **CLIP‡ branch the versions are nearly equivalent** (|Δ| ≤ 4.6, mixed signs, raw slightly ahead in most rolled-out cells) — CLIP feature norms are far more uniform, so raw ≈ normalized there. Across all 60 cells: normalized ≥ raw in 45, median +8.2.
+
+**Infrastructure:** `stage2_raw_*_table.md` generators (raw accuracy + per-cell raw−normalized difference); repro_check parametrized over variants — now verifies both grids end-to-end (summaries from raw arrays, deltas vs Stage-1, prediction files) + content-compares the raw tables; the published-grid stability sweeps exclude `_raw` curves (count stays 135); notebook §2 rewritten as "The two versions ‡" — both raw tables embedded, live-computed summary (45/60, median +8.17, 27 below baseline, 33/135 raw instability), honest branch-split reading; report §1 updated with the full-version numbers; tasks `run2raw`. Notebook: 33 cells, 0 errors/warnings; `tasks.ps1 check` green over both variants (2×60 summary rows, 2×180 runs, 2×60 prediction files, 5 tables content-verified).
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*

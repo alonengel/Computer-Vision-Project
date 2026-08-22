@@ -60,18 +60,34 @@ assert t0_check("dtd", "resnet18", "image_prototype", 10, 0)
 assert t0_check("fgvc_aircraft", "clip_rn50", "clip_text", 10, 0)
 """),
     ("markdown", """
-#### Control ‡ (beyond spec): is the normalization decision measured, or merely asserted?
+#### The two versions ‡: the literal-spec raw-feature grid, run in full
 
-The rationale above — raw-space interpolation toward unit-norm prototypes would spend the model's capacity on scale rather than class structure — is a claim about the learned problem, so we measure it rather than assert it. For the seed-0 slice of the image-prototype branch (3 settings × K ∈ {5, 10, full} × both training modes, T = 12), the **identical** velocity network, recipe, prototypes, subsets and seeds were retrained on **raw** features (`normalize=False`); the only difference between each pair of runs is the input normalization. The Stage-1 baseline is unaffected by the choice (cosine classification is scale-invariant), so the comparison isolates the decision cleanly. These runs are a diagnostic, not part of the published grid.
+The rationale above — raw-space interpolation toward unit-norm prototypes would spend the model's capacity on scale rather than class structure — is a claim about the learned problem, so we measure it rather than assert it: the **complete grid was run twice**. The published version operates on $L_2$-normalized inputs (ADR 0007 §3); the second version is the **literal-spec formulation** ($\\hat{z}_0 = z$, raw frozen features) under the otherwise-identical protocol — same velocity network, recipe, prototypes, committed subsets, all seeds, both T values, both branches, the same min-training-loss checkpoint rule, the same test split. The Stage-1 baselines are identical for both versions (cosine classification is scale-invariant), so the comparison isolates the input-normalization decision completely. Full raw-version artifacts: `runs_stage2_raw.csv`, `summary_stage2_raw.csv`, per-run curves and predictions with a `_raw` suffix — all covered by the repro check.
 """),
     ("code", """
-display(Markdown((REPO / "results" / "metrics" / "stage2_raw_ablation.md")
-                 .read_text(encoding="utf-8")))
-abl = pd.read_csv(REPO / "results" / "metrics" / "stage2_raw_ablation.csv")
-n = int((abl["normalized_acc"] >= abl["raw_acc"]).sum())
-d = 100 * (abl["normalized_acc"] - abl["raw_acc"])
-print(f"Normalized ≥ raw in {n} / {len(abl)} settings; "
+for name in ("stage2_raw_image_prototype_table.md", "stage2_raw_clip_text_table.md"):
+    display(Markdown((REPO / "results" / "metrics" / name).read_text(encoding="utf-8")))
+
+s_raw = pd.read_csv(REPO / "results" / "metrics" / "summary_stage2_raw.csv")
+s_norm = pd.read_csv(REPO / "results" / "metrics" / "summary_stage2.csv")
+keys = ["dataset", "encoder", "target", "head", "T", "k_shot"]
+m = s_raw.merge(s_norm, on=keys, suffixes=("_raw", "_norm"))
+d = 100 * (m["mean_acc_norm"] - m["mean_acc_raw"])
+n_norm = int((d >= 0).sum())
+print(f"Normalized ≥ raw in {n_norm} / {len(m)} grid cells; "
       f"normalized − raw ranges {d.min():+.2f} to {d.max():+.2f} points "
       f"(median {d.median():+.2f}).")
+below = int((m["mean_acc_raw"] < m["baseline_mean_raw"]).sum())
+print(f"Raw-version cells below their own Stage-1 baseline: {below} / {len(m)}.")
+
+import json as _json
+raw_curves = sorted((REPO / "results" / "artifacts" / "curves_stage2").glob("*_raw.json"))
+bad = sum(1 for p in raw_curves
+          if (lambda h: h[-1] > 1.05 * min(h))(_json.load(open(p))["train_loss"]))
+print(f"Raw-version stability (same ADR 0007 §7 criterion, same min-loss "
+      f"checkpoint rule): {bad} of {len(raw_curves)} curves exceed 1.05x.")
+"""),
+    ("markdown", """
+The two-version comparison replaces any need to argue the normalization choice from first principles. On the **spec branch the cost of the literal formulation is decisive** — the normalized version is better in every one of the 36 image-prototype cells, mostly by double digits, and raw training is also less stable (more curves trip the §4 criterion, and the raw rolled-out DINOv2 full-split runs carry multi-point spreads). On the **CLIP‡ branch the two versions are nearly equivalent** (differences small and mixed in sign, raw slightly ahead in most rolled-out cells) — consistent with CLIP image features having far more uniform norms, so raw and normalized inputs differ much less there. The normalized version remains the primary published result; the raw version is reported in full for transparency.
 """),
 ]

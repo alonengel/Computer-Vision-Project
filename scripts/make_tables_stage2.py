@@ -111,6 +111,55 @@ def branch_table(target):
     return table, out
 
 
+def raw_branch_table(target):
+    """The raw-feature (literal-spec, no input normalization) version of the
+    grid, side by side with the published normalized version. Generated only
+    once runs_stage2_raw.csv exists."""
+    cfg = load_config()
+    s_raw = pd.read_csv(metrics_dir() / "summary_stage2_raw.csv")
+    s_norm = pd.read_csv(metrics_dir() / "summary_stage2.csv")
+    g_all = s_raw[s_raw["target"] == target]
+    mark = "" if target == cfg["stage2"]["spec_selected_branch"] else " ‡"
+
+    lines = ["| Dataset | Encoder | Head | " + " | ".join(K_HEAD[k] for k in K_COLS) + " |",
+             "|---|---|---|---|---|---|"]
+    for (ds, enc), g in g_all.groupby(["dataset", "encoder"], sort=False):
+        ds_cell = f"{dataset_label(ds)}{mark}"
+        for head, T in HEAD_ORDER:
+            cells = []
+            for k in K_COLS:
+                r = g[(g["head"] == head) & (g["T"] == T) & (g["k_shot"] == k)]
+                n = s_norm[(s_norm["dataset"] == ds) & (s_norm["encoder"] == enc)
+                           & (s_norm["target"] == target) & (s_norm["head"] == head)
+                           & (s_norm["T"] == T) & (s_norm["k_shot"] == k)]
+                if r.empty or n.empty:
+                    cells.append("—")
+                    continue
+                r, n = r.iloc[0], n.iloc[0]
+                acc = f"{100 * r['mean_acc']:.2f}"
+                if r["n_runs"] > 1:
+                    acc += f" ± {100 * r['std_acc']:.2f}"
+                cells.append(f"{acc} (norm {100 * (r['mean_acc'] - n['mean_acc']):+.2f})")
+            lines.append(f"| {ds_cell} | {encoder_label(enc, short=True)} "
+                         f"| {head_label(head)}, T = {T} | " + " | ".join(cells) + " |")
+    lines.append("")
+    lines.append(
+        "**Raw-feature version** of the full Stage-2 grid — the literal-spec "
+        "formulation (ẑ₀ = z, no input L2-normalization), run under the identical "
+        "protocol: same velocity network, recipe, prototypes, committed subsets, "
+        "seeds, checkpoint rule and test split as the published normalized version. "
+        "Top-1 (%) on the complete official test split; mean ± sample std over the "
+        "same 3 runs. The parenthesis gives the raw-minus-normalized difference of "
+        "setting means (negative = the normalized version is better). The Stage-1 "
+        "baselines are identical for both versions (cosine classification is "
+        "scale-invariant). The normalized version remains the primary published "
+        "result (ADR 0007 §3).")
+    out = metrics_dir() / f"stage2_raw_{target}_table.md"
+    table = "\n".join(lines)
+    out.write_text(table, encoding="utf-8")
+    return table, out
+
+
 def paired_delta_table():
     """Per-seed-paired deltas, image branch only, K in {5,10} — the regime where
     pairing is genuine (baseline and FM share subset seeds)."""
@@ -144,6 +193,11 @@ def main():
     tbl, path = paired_delta_table()
     print(tbl)
     print(f"\nwritten: {path}")
+    if (metrics_dir() / "summary_stage2_raw.csv").exists():
+        for target in ("image_prototype", "clip_text"):
+            tbl, path = raw_branch_table(target)
+            print("\n" + tbl)
+            print(f"\nwritten: {path}")
 
 
 if __name__ == "__main__":

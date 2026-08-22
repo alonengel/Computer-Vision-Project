@@ -16,6 +16,10 @@ Guard: before any training, the T=0 classification must reproduce the Stage-1
 baseline accuracy for that exact setting (asserted against runs.csv).
 
 `--smoke` shortens training and shrinks the grid for a pipeline check.
+`--raw` runs the complete grid WITHOUT the L2-normalization of the input
+features (the literal-spec formulation, ADR 0007 §3): identical protocol,
+seeds, prototypes and baselines; outputs carry a `_raw` suffix
+(runs_stage2_raw.csv etc.) and never touch the published normalized results.
 """
 import json
 import sys
@@ -64,11 +68,11 @@ def fm_models_dir():
     return d
 
 
-def main(smoke=False):
+def main(smoke=False, raw=False):
     cfg = load_config()
     s2 = cfg["stage2"]
     overrides = {"max_epochs": cfg["smoke"]["max_epochs"]} if smoke else {}
-    tag = "_smoke" if smoke else ""
+    tag = "_smoke" if smoke else ("_raw" if raw else "")
     T_values = [s2["T_values"][0]] if smoke else s2["T_values"]
     shots = [5] if smoke else cfg["shots"]
 
@@ -121,7 +125,8 @@ def main(smoke=False):
                     def train_one(mode, T_train):
                         set_seed(init_seed)
                         head = FlowMatchingHead(protos, mode, T=T_train,
-                                                seed=init_seed, **overrides)
+                                                seed=init_seed, normalize=not raw,
+                                                **overrides)
                         head.fit(Xtr[idx], ytr[idx])
                         suffix = f"_T{T_train}" if mode == "rollout" else ""
                         name = f"{ds}_{enc}_{target}_fm_{mode}{suffix}_{k_label(k)}_seed{seed}{tag}"
@@ -177,4 +182,4 @@ def main(smoke=False):
 
 
 if __name__ == "__main__":
-    main(smoke="--smoke" in sys.argv)
+    main(smoke="--smoke" in sys.argv, raw="--raw" in sys.argv)

@@ -70,8 +70,9 @@ class FlowMatchingHead:
         assert mode in ("standard", "rollout"), mode
         assert mode != "rollout" or T is not None, "rolled-out training needs its inference T"
         self.mode, self.T, self.seed = mode, T, seed
-        # normalize=False exists ONLY for the beyond-spec raw-feature control
-        # (scripts/run_stage2_raw_ablation.py); every main result uses True.
+        # normalize=False runs the literal-spec raw-feature version of the grid
+        # (`run_stage2.py --raw`, reported as the ‡ comparison version); every
+        # primary published result uses True (ADR 0007 §3).
         self.normalize = normalize
         self.device = get_device()
         self.prototypes = F.normalize(prototypes.float(), dim=-1).to(self.device)

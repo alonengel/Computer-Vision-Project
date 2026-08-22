@@ -15,11 +15,13 @@ minimum-training-loss epoch (`checkpoint_selection: "min_train_loss"` in config)
 no validation or test data involved, and the entire grid was re-run under the
 fallback. The first grid's numbers were never published; the criterion, fallback,
 and trigger are reported in the report and notebook.
-**Post-audit addendum (2026-08-22):** a beyond-spec raw-vs-normalized control
-(`scripts/run_stage2_raw_ablation.py`; seed-0 slice, identical recipe/targets/
-subsets, only the input normalization differing) now *measures* the §3 rationale
-instead of asserting it — normalized is decisively better across the slice
-(`results/metrics/stage2_raw_ablation.md`); the published grid is untouched.
+**Post-audit addendum (2026-08-22):** the §3 rationale is now *measured*, not
+asserted — the **complete grid was run a second time on raw features**
+(`run_stage2.py --raw`: the literal-spec ẑ₀ = z, otherwise-identical protocol —
+every seed, T and branch; artifacts suffixed `_raw`, tables
+`stage2_raw_*_table.md`, covered by the repro check). A preliminary seed-0
+slice (18/18 for normalized, median +10.2 pts) was superseded by the full
+version and removed. The normalized grid remains the primary published result.
 Checkpoint-benignity evidence (selected epochs sit at the end of training for
 every stable run; the superseded final-epoch grid's stable-run accuracies differ
 only by tenths) is now printed in notebook §4 and stated in report §3.
