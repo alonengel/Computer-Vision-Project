@@ -203,12 +203,14 @@ def confusion(cm, class_names, title, name, top_confusions=None):
 # 5 · feature visualizations (image/text features + class prototypes)
 # --------------------------------------------------------------------------- #
 
-def feature_projection(panels, class_names, title, name):
+def feature_projection(panels, class_names, title, name, axis_labels=None):
     """panels: list of dicts with 'title', 'xy' [N,2], 'labels' [N], 'proto_xy' [C,2].
 
     The projection is fitted jointly to the plotted image features and prototypes
     (done by the caller), so prototype positions are comparable to the points.
     Colours are fixed per class index across every panel and figure.
+    axis_labels: optional (xlabel, ylabel) shown on every panel — used by the
+    PCA-only Stage-2 figures to state the axes and explained variance.
     """
     # Shared class palette (see class_palette); marker shape also varies so
     # class identity does not rest on hue alone.
@@ -227,6 +229,9 @@ def feature_projection(panels, class_names, title, name):
                            color=palette[j], edgecolors="black", linewidths=1.3, zorder=5)
         ax.set_title(p["title"], fontsize=12)
         ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        if axis_labels:
+            ax.set_xlabel(axis_labels[0], fontsize=10)
+            ax.set_ylabel(axis_labels[1], fontsize=10)
     handles, labels_ = axes[0][0].get_legend_handles_labels()
     from matplotlib.lines import Line2D
 
@@ -282,23 +287,28 @@ def stage2_accuracy_chart(dataset, encoder, target, rows, baseline, name, subtit
 
 
 def fm_training_curves(panels, name, suptitle):
-    """panels: list of dicts with 'title' and 'curves': [(label, color, history)].
-    Training loss only (Stage-2 FM uses no validation-based selection); log scale
-    because the two objectives live on different magnitudes."""
+    """panels: list of dicts with 'title' and 'curves':
+    [(label, color, history)] or [(label, color, history, linestyle)].
+    Training loss only; log scale because the two objectives live on different
+    magnitudes; line styles differ so series identity does not rest on hue
+    alone. Every panel carries its own y-label (scales are independent)."""
     fig, axes = plt.subplots(1, len(panels), figsize=(6.0 * len(panels), 4.4), squeeze=False)
     for ax, p in zip(axes[0], panels):
-        for label, color, h in p["curves"]:
-            ax.semilogy(h["epoch"], h["train_loss"], label=label, color=color, lw=2)
+        for curve in p["curves"]:
+            label, color, h = curve[:3]
+            ls = curve[3] if len(curve) > 3 else "-"
+            ax.semilogy(h["epoch"], h["train_loss"], label=label, color=color,
+                        lw=2, linestyle=ls)
         ax.set_title(p["title"], fontsize=12)
         ax.set_xlabel("epoch")
+        ax.set_ylabel("training loss (log scale)", fontsize=10)
         ax.legend(fontsize=9.5)
-    axes[0][0].set_ylabel("training loss (log scale)")
     fig.suptitle(suptitle, y=1.04, fontsize=13.5)
     fig.tight_layout()
     return _save(fig, name)
 
 
-def flow_trajectory_chart(panels, bg, class_names, title, name):
+def flow_trajectory_chart(panels, bg, class_names, title, name, axis_labels=None):
     """Flow trajectories in a joint PCA plane (spec item 4).
 
     bg: {'xy' [N,2], 'labels' [N], 'proto_xy' [C,2]} — shared background of test
@@ -326,6 +336,9 @@ def flow_trajectory_chart(panels, bg, class_names, title, name):
                        edgecolors="black", linewidths=1.2, zorder=6)
         ax.set_title(p["title"], fontsize=12)
         ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        if axis_labels:
+            ax.set_xlabel(axis_labels[0], fontsize=10)
+            ax.set_ylabel(axis_labels[1], fontsize=10)
     from matplotlib.lines import Line2D
 
     handles = [Line2D([], [], linestyle="", marker="o", markersize=10, color="#AAAAAA",

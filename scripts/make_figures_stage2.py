@@ -91,11 +91,11 @@ def curve_charts():
     panels = []
     for target, ds, enc in s2_pairs():
         curves = [("Standard FM", STAGE2_COLORS[("fm_standard", 12)],
-                   _curve(ds, enc, target, "standard", REP_K, REP_SEED)),
+                   _curve(ds, enc, target, "standard", REP_K, REP_SEED), "-"),
                   ("Rolled-out FM, T = 4", STAGE2_COLORS[("fm_rollout", 4)],
-                   _curve(ds, enc, target, "rollout", REP_K, REP_SEED, T=4)),
+                   _curve(ds, enc, target, "rollout", REP_K, REP_SEED, T=4), "--"),
                   ("Rolled-out FM, T = 12", STAGE2_COLORS[("fm_rollout", 12)],
-                   _curve(ds, enc, target, "rollout", REP_K, REP_SEED, T=12))]
+                   _curve(ds, enc, target, "rollout", REP_K, REP_SEED, T=12), "-.")]
         panels.append({"title": f"{dataset_label(ds)} — {encoder_label(enc, short=True)}"
                                 f"\n(toward {target_label(target)})", "curves": curves})
     for i in range(0, len(panels), 3):
@@ -152,11 +152,16 @@ def _rep_setting(ds, enc, target):
     return classes, idx, X, Xstd, Xroll, protos, y, sel_names, std, roll
 
 
+def pc_labels(pca):
+    v = 100 * pca.explained_variance_ratio_
+    return (f"PC1 ({v[0]:.1f}% var.)", f"PC2 ({v[1]:.1f}% var.)")
+
+
 def feature_charts():
     for target, ds, enc in s2_pairs():
         classes, idx, X, Xstd, Xroll, protos, y, sel_names, _, _ = _rep_setting(ds, enc, target)
-        _, (xy0, xy1, xy2, pxy) = _joint_pca([X.numpy(), Xstd.numpy(), Xroll.numpy(),
-                                              protos.numpy()])
+        pca, (xy0, xy1, xy2, pxy) = _joint_pca([X.numpy(), Xstd.numpy(), Xroll.numpy(),
+                                                protos.numpy()])
         panels = [{"title": "Original features", "xy": xy0, "labels": y, "proto_xy": pxy},
                   {"title": f"After Standard FM (T = {REP_T})", "xy": xy1, "labels": y,
                    "proto_xy": pxy},
@@ -170,7 +175,7 @@ def feature_charts():
             f"and after FM transport, with {proto_kind}\n(one PCA fitted jointly to all "
             f"three feature sets and the prototypes — every panel shares the same plane; "
             f"10-shot models, subset seed 0; qualitative view)",
-            f"stage2_features_{ds}_{enc}_{target}.png"))
+            f"stage2_features_{ds}_{enc}_{target}.png", axis_labels=pc_labels(pca)))
 
 
 def traj_charts(n_examples=4):
@@ -196,7 +201,7 @@ def traj_charts(n_examples=4):
             f"trajectories toward {target_label(target)}\n(joint PCA plane shared with "
             f"the feature-comparison figure; background: original test features; "
             f"{n_examples} representative examples, 10-shot models, subset seed 0)",
-            f"stage2_traj_{ds}_{enc}_{target}.png"))
+            f"stage2_traj_{ds}_{enc}_{target}.png", axis_labels=pc_labels(pca)))
 
 
 def main():

@@ -15,6 +15,14 @@ minimum-training-loss epoch (`checkpoint_selection: "min_train_loss"` in config)
 no validation or test data involved, and the entire grid was re-run under the
 fallback. The first grid's numbers were never published; the criterion, fallback,
 and trigger are reported in the report and notebook.
+**Post-audit addendum (2026-08-22):** a beyond-spec raw-vs-normalized control
+(`scripts/run_stage2_raw_ablation.py`; seed-0 slice, identical recipe/targets/
+subsets, only the input normalization differing) now *measures* the §3 rationale
+instead of asserting it — normalized is decisively better across the slice
+(`results/metrics/stage2_raw_ablation.md`); the published grid is untouched.
+Checkpoint-benignity evidence (selected epochs sit at the end of training for
+every stable run; the superseded final-epoch grid's stable-run accuracies differ
+only by tenths) is now printed in notebook §4 and stated in report §3.
 
 **Context.** `_docs/stage_2.pdf` adds a flow-matching layer to the Stage-1 prototype
 classifier: standard FM (`z_t = (1−t)z_i + t·p_{y_i}`, target velocity `p − z`,

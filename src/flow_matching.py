@@ -63,12 +63,16 @@ class FlowMatchingHead:
     contingency, triggered), never validation- or test-based.
     """
 
-    def __init__(self, prototypes, mode, T=None, seed=0, hidden=None, **overrides):
+    def __init__(self, prototypes, mode, T=None, seed=0, hidden=None,
+                 normalize=True, **overrides):
         cfg = load_config()["stage2"]
         self.cfg = {**cfg["training"], **overrides}
         assert mode in ("standard", "rollout"), mode
         assert mode != "rollout" or T is not None, "rolled-out training needs its inference T"
         self.mode, self.T, self.seed = mode, T, seed
+        # normalize=False exists ONLY for the beyond-spec raw-feature control
+        # (scripts/run_stage2_raw_ablation.py); every main result uses True.
+        self.normalize = normalize
         self.device = get_device()
         self.prototypes = F.normalize(prototypes.float(), dim=-1).to(self.device)
         self.dim = self.prototypes.shape[1]
@@ -89,7 +93,8 @@ class FlowMatchingHead:
     def fit(self, Xtr, ytr):
         cfg = self.cfg
         dev = self.device
-        Z = F.normalize(Xtr.float(), dim=-1).to(dev)
+        Z = (F.normalize(Xtr.float(), dim=-1) if self.normalize
+             else Xtr.float()).to(dev)
         P = self.prototypes[ytr.long().to(dev)]
         opt = torch.optim.AdamW(self.model.parameters(), lr=cfg["lr"],
                                 weight_decay=cfg["weight_decay"])
@@ -137,7 +142,8 @@ class FlowMatchingHead:
         """Euler-transport features; optionally return every intermediate state
         [T+1, B, D] (z_hat_0 .. z_hat_T) for the flow-trajectory figures."""
         self.model.eval()
-        z = F.normalize(X.float(), dim=-1).to(self.device)
+        z = (F.normalize(X.float(), dim=-1) if self.normalize
+             else X.float()).to(self.device)
         traj = [z.cpu()]
         for k in range(T):
             t = torch.full((len(z),), k / T, device=self.device)
