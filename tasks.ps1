@@ -23,6 +23,7 @@ switch ($Task) {
     "run2raw"  { & $PY scripts\run_stage2.py --raw }
     "smoke2"   { & $PY scripts\run_stage2.py --smoke }
     "tables2"  { & $PY scripts\make_tables_stage2.py }
+    "tests"    { & $PY tests\test_flow_matching.py }
     "figures2" { & $PY scripts\make_figures_stage2.py }
     "notebook2" {
         & $PY notebooks\build_notebook.py 2

@@ -61,7 +61,7 @@ print(f"Best FM-to-prototype (FGVC/DINOv2, full): {100*b:.2f}%  vs  "
 | Training configuration | suggested-scope | Stage-1 probe recipe reused verbatim, no search |
 | Checkpoint = min-training-loss epoch | **pre-registered contingency, triggered** | §4: uniform over all models after 3 rolled-out divergences on the first grid; training-set-only criterion; the first grid's numbers were never published |
 | Runs / seeds / metric | as specified | Stage-1 repetition protocol mirrored exactly; top-1 on the complete official test split |
-| Optional reverse-flow / intermediate-time exploration | not attempted | the spec encourages it as optional; out of scope for this deliverable |
+| Optional reverse-flow / intermediate-time exploration | **done** ‡ (§5c) | approximate backward integration from the prototypes + sample-vs-prototype comparison at matching times; no retraining, no published number changed |
 | Raw-feature version of the full grid | extension (beyond spec) | the literal-spec formulation ($\\hat{z}_0 = z$) run in full under the identical protocol (§2) — every seed, T, branch; isolates the normalization decision completely; the normalized version remains the primary result |
 
 ### Artifact paths

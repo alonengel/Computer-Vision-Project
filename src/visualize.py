@@ -354,6 +354,54 @@ def flow_trajectory_chart(panels, bg, class_names, title, name, axis_labels=None
     return _save(fig, name)
 
 
+def reverse_flow_chart(panels, bg, class_names, title, name, axis_labels=None):
+    """Reverse-flow trajectories (spec's optional exploration): start = the
+    class prototype (star), intermediate reverse Euler states as dots, a
+    distinct square marker at the reverse endpoint (t = 0), and arrowheads
+    along the path showing the direction of motion from t = 1 toward t = 0.
+    Same contract as flow_trajectory_chart: one jointly fitted projection."""
+    palette = class_palette(len(class_names))
+    fig, axes = plt.subplots(1, len(panels), figsize=(6.8 * len(panels), 6.2), squeeze=False)
+    for ax, p in zip(axes[0], panels):
+        labels = np.asarray(bg["labels"])
+        for j in sorted(np.unique(labels)):
+            m = labels == j
+            ax.scatter(bg["xy"][m, 0], bg["xy"][m, 1], s=12, alpha=0.15,
+                       color=palette[j], marker="o")
+            ax.scatter(bg["proto_xy"][j, 0], bg["proto_xy"][j, 1], marker="*", s=430,
+                       color=palette[j], edgecolors="black", linewidths=1.3, zorder=5)
+        for class_idx, xy in p["trajs"]:   # xy: [T+1, 2], descending time 1 -> 0
+            c = palette[class_idx]
+            ax.plot(xy[:, 0], xy[:, 1], color=c, lw=1.8, alpha=0.95, zorder=4)
+            ax.scatter(xy[1:-1, 0], xy[1:-1, 1], color=c, s=24, zorder=4,
+                       edgecolors="white", linewidths=0.5)
+            for k in range(0, len(xy) - 1, 3):   # arrowheads every 3rd segment
+                ax.annotate("", xy=xy[k + 1], xytext=xy[k], zorder=6,
+                            arrowprops=dict(arrowstyle="-|>", color=c, lw=1.6,
+                                            shrinkA=0, shrinkB=0))
+            ax.scatter(xy[-1, 0], xy[-1, 1], color=c, s=120, marker="s",
+                       edgecolors="black", linewidths=1.2, zorder=7)
+        ax.set_title(p["title"], fontsize=12)
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        if axis_labels:
+            ax.set_xlabel(axis_labels[0], fontsize=10)
+            ax.set_ylabel(axis_labels[1], fontsize=10)
+    from matplotlib.lines import Line2D
+
+    handles = [Line2D([], [], linestyle="", marker="*", markersize=16, color="white",
+                      markeredgecolor="black", label="class prototype (start, $t = 1$)"),
+               Line2D([], [], linestyle="", marker="o", markersize=7, color="#AAAAAA",
+                      label="intermediate reverse state"),
+               Line2D([], [], linestyle="", marker="s", markersize=10, color="#AAAAAA",
+                      markeredgecolor="black", label="reverse endpoint ($t = 0$)"),
+               Line2D([], [], color="#555555", lw=1.6, label="reverse path (arrows: $t=1 \\to 0$)")]
+    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.0),
+               ncol=4, fontsize=10.5, frameon=True)
+    fig.suptitle(title, y=1.02, fontsize=13.5)
+    fig.tight_layout()
+    return _save(fig, name)
+
+
 def sample_grid(pool, indices, class_names, title, name, n_cols=8):
     """Qualitative dataset preview: one row of example images per selected class."""
     n = len(indices)

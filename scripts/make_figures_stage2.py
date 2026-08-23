@@ -205,10 +205,86 @@ def traj_charts(n_examples=4):
             f"stage2_traj_{ds}_{enc}_{target}.png", axis_labels=pc_labels(pca)))
 
 
+def reverse_charts():
+    """Spec's OPTIONAL reverse exploration (one representative setting, both
+    training modes): integrate the learned field backward from each selected
+    class prototype (reverse_transport), drawn in the SAME jointly fitted PCA
+    plane as the forward feature/trajectory figures — the projection is fitted
+    once on the identical inputs, never refit for the reverse plots. Also
+    writes the intermediate-time comparison (reverse-prototype state vs the
+    forward centroid of the same class's selected test samples at the matching
+    Euler time): cosine similarity + L2, per class per time, to CSV, plus a
+    summary chart. Deterministic; uses saved checkpoints only."""
+    import matplotlib.pyplot as plt
+
+    from src.visualize import (STAGE2_COLORS, _save, head_label, reverse_flow_chart)
+
+    ds, enc, target = "fgvc_aircraft", "dinov2_vits14", "image_prototype"
+    tag = f"{ds}_{enc}_T{REP_T}"
+    classes, idx, X, Xstd, Xroll, protos, y, sel_names, std, roll = \
+        _rep_setting(ds, enc, target)
+    pca, (xy0, _, _, pxy) = _joint_pca([X.numpy(), Xstd.numpy(), Xroll.numpy(),
+                                        protos.numpy()])
+    bg = {"xy": xy0, "labels": y, "proto_xy": pxy}
+
+    panels, rows = [], []
+    for head, label in ((std, "Standard FM"), (roll, "Rolled-out FM")):
+        # reverse trajectories from the selected class prototypes (descending t)
+        _, rtraj, times = head.reverse_transport(protos, REP_T, return_traj=True)
+        panels.append({"title": f"{label} (T = {REP_T})",
+                       "trajs": [(j, pca.transform(rtraj[:, j].numpy()))
+                                 for j in range(len(classes))]})
+        # forward states of the selected test samples, per class centroid per time
+        _, ftraj = head.transport(X, REP_T, return_traj=True)  # [T+1, N, D]
+        for j in range(len(classes)):
+            fc = ftraj[:, y == j].mean(dim=1)                  # [T+1, D], t = k/T
+            for k in range(REP_T + 1):
+                rev = rtraj[REP_T - k, j]                      # reverse state at t = k/T
+                cos = float(F.cosine_similarity(rev, fc[k], dim=0))
+                rows.append({"head": f"fm_{head.mode}", "class_idx": j,
+                             "class_name": sel_names[j], "t": k / REP_T,
+                             "cosine": cos, "l2": float((rev - fc[k]).norm())})
+
+    print("figure:", reverse_flow_chart(
+        panels, bg, sel_names,
+        f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: approximate "
+        f"backward integration from the class prototypes\n(reverse Euler on the "
+        f"learned field, trained forward-only; same joint-PCA plane as the "
+        f"feature/trajectory figures; 10-shot models, subset seed 0; qualitative)",
+        f"stage2_reverse_flow_{tag}.png", axis_labels=pc_labels(pca)))
+
+    df = pd.DataFrame(rows)
+    csv_path = metrics_dir() / f"stage2_reverse_intermediate_{tag}.csv"
+    df.to_csv(csv_path, index=False)
+    print("written:", csv_path)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.6))
+    for ax, metric, ylabel in ((axes[0], "cosine", "cosine similarity"),
+                               (axes[1], "l2", "$L_2$ distance")):
+        for mode in ("fm_standard", "fm_rollout"):
+            g = df[df["head"] == mode].groupby("t")[metric].agg(["mean", "std"])
+            color = STAGE2_COLORS[(mode, 12)]
+            ax.plot(g.index, g["mean"], color=color, lw=2.2,
+                    label=f"{head_label(mode)} (mean ± std over "
+                          f"{df['class_idx'].nunique()} classes)")
+            ax.fill_between(g.index, g["mean"] - g["std"], g["mean"] + g["std"],
+                            color=color, alpha=0.18)
+        ax.set_xlabel("flow time $t$ (reverse runs $1 \\to 0$)")
+        ax.set_ylabel(ylabel)
+        ax.legend(fontsize=9)
+    fig.suptitle(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: "
+                 f"reverse-prototype state vs forward same-class centroid at "
+                 f"matching Euler times (384-d space, not the PCA plane)",
+                 y=1.03, fontsize=12.5)
+    fig.tight_layout()
+    print("figure:", _save(fig, f"stage2_reverse_intermediate_{tag}.png"))
+
+
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
     steps = {"acc": acc_charts, "curves": curve_charts,
-             "features": feature_charts, "traj": traj_charts}
+             "features": feature_charts, "traj": traj_charts,
+             "reverse": reverse_charts}
     for name, fn in steps.items():
         if only and name != only:
             continue

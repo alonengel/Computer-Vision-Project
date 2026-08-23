@@ -154,6 +154,44 @@ class FlowMatchingHead:
         return (z.cpu(), torch.stack(traj)) if return_traj else z.cpu()
 
     @torch.no_grad()
+    def reverse_transport(self, Z1, T, return_traj=False):
+        """Integrate the learned field BACKWARD from t = 1 to t = 0 with
+        explicit Euler (spec's optional reverse exploration):
+
+            z_{k-1} = z_k - (1/T) v_theta(z_k, k/T),   k = T, T-1, ..., 1
+
+        so the FIRST velocity evaluation is at t = 1 (canonical reverse
+        integration; note the forward rollout only ever evaluates t up to
+        (T-1)/T). `Z1` is taken as an already-in-space state at time 1
+        (e.g. a class prototype, unit-norm by construction) and is NOT
+        re-normalized; no renormalization occurs between steps, matching
+        the forward implementation.
+
+        This is a numerical backward integration of the learned *continuous*
+        vector field — it is NOT the exact algebraic inverse of the discrete
+        forward-Euler map, the network was trained in the forward direction
+        only, and the learned map need not be bijective. It is deterministic:
+        this FM head is not a generative model, so one starting state yields
+        exactly one reverse trajectory.
+
+        Returns z_0; with return_traj=True returns (z_0, traj [T+1, B, D],
+        times [T+1]) in DESCENDING time order: times = [1, (T-1)/T, ..., 0],
+        traj[0] == Z1.
+        """
+        self.model.eval()
+        z = Z1.float().to(self.device)
+        traj = [z.cpu()]
+        for k in range(T, 0, -1):
+            t = torch.full((len(z),), k / T, device=self.device)
+            z = z - self.model(z, t) / T
+            if return_traj:
+                traj.append(z.cpu())
+        if return_traj:
+            times = torch.arange(T, -1, -1, dtype=torch.float32) / T
+            return z.cpu(), torch.stack(traj), times
+        return z.cpu()
+
+    @torch.no_grad()
     def predict(self, X, T):
         z = self.transport(X, T).to(self.device)
         return (F.normalize(z, dim=-1) @ self.prototypes.T).argmax(-1).cpu()
