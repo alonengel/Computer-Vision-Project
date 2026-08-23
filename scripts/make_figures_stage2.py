@@ -227,23 +227,59 @@ def reverse_charts():
                                         protos.numpy()])
     bg = {"xy": xy0, "labels": y, "proto_xy": pxy}
 
-    panels, rows = [], []
+    from src.evaluation import top1
+
+    fte = load_features(ds, "test", enc)
+    Xte, yte = fte["features"], fte["labels"].long()
+    runs2 = pd.read_csv(metrics_dir() / "runs_stage2.csv")
+
+    panels, rows, acc_rows = [], [], []
     for head, label in ((std, "Standard FM"), (roll, "Rolled-out FM")):
         # reverse trajectories from the selected class prototypes (descending t)
         _, rtraj, times = head.reverse_transport(protos, REP_T, return_traj=True)
-        panels.append({"title": f"{label} (T = {REP_T})",
-                       "trajs": [(j, pca.transform(rtraj[:, j].numpy()))
-                                 for j in range(len(classes))]})
         # forward states of the selected test samples, per class centroid per time
         _, ftraj = head.transport(X, REP_T, return_traj=True)  # [T+1, N, D]
+        ref = []
         for j in range(len(classes)):
             fc = ftraj[:, y == j].mean(dim=1)                  # [T+1, D], t = k/T
+            ref.append((j, pca.transform(fc.numpy())))
             for k in range(REP_T + 1):
                 rev = rtraj[REP_T - k, j]                      # reverse state at t = k/T
                 cos = float(F.cosine_similarity(rev, fc[k], dim=0))
                 rows.append({"head": f"fm_{head.mode}", "class_idx": j,
                              "class_name": sel_names[j], "t": k / REP_T,
                              "cosine": cos, "l2": float((rev - fc[k]).norm())})
+        panels.append({"title": f"{label} (T = {REP_T})",
+                       "trajs": [(j, pca.transform(rtraj[:, j].numpy()))
+                                 for j in range(len(classes))],
+                       "ref_trajs": ref})
+
+        # ---- reverse-flow Top-1 on the COMPLETE official test split ----
+        P = head.prototypes.cpu()                                # all 100 classes
+        zn = F.normalize(Xte.float(), dim=-1)
+        base_acc = top1((zn @ P.T).argmax(-1), yte)              # Stage-1 rule
+        fwd_acc = top1(head.predict(Xte, REP_T), yte)            # published forward FM
+        pub = runs2[(runs2["dataset"] == ds) & (runs2["encoder"] == enc)
+                    & (runs2["target"] == target) & (runs2["head"] == f"fm_{head.mode}")
+                    & (runs2["T"] == REP_T) & (runs2["k_shot"] == REP_K)
+                    & (runs2["run"] == 0)]
+        assert abs(fwd_acc - float(pub["test_acc"].iloc[0])) < 1e-6, \
+            "forward accuracy no longer reproduces the published grid"
+        # round trip: forward to t=1, integrate back to t=0, classify as Stage 1
+        rt = head.reverse_transport(head.transport(Xte, REP_T), REP_T)
+        rt_acc = top1((F.normalize(rt, dim=-1) @ P.T).argmax(-1), yte)
+        # reverse-endpoint classifier: reverse every prototype to t=0 and use the
+        # endpoints as class representatives for the original features
+        ends = head.reverse_transport(P, REP_T)
+        end_acc = top1((zn @ F.normalize(ends, dim=-1).T).argmax(-1), yte)
+        acc_rows.append({"head": f"fm_{head.mode}",
+                         "stage1_prototype_top1": base_acc,
+                         "forward_fm_top1": fwd_acc,
+                         "roundtrip_top1": rt_acc,
+                         "reverse_endpoint_top1": end_acc})
+        print(f"[reverse-top1] {head.mode}: baseline {100 * base_acc:.2f} | "
+              f"forward {100 * fwd_acc:.2f} | round-trip {100 * rt_acc:.2f} | "
+              f"reverse-endpoint {100 * end_acc:.2f}")
 
     print("figure:", reverse_flow_chart(
         panels, bg, sel_names,
@@ -257,6 +293,10 @@ def reverse_charts():
     csv_path = metrics_dir() / f"stage2_reverse_intermediate_{tag}.csv"
     df.to_csv(csv_path, index=False)
     print("written:", csv_path)
+
+    acc_path = metrics_dir() / f"stage2_reverse_top1_{tag}.csv"
+    pd.DataFrame(acc_rows).to_csv(acc_path, index=False)
+    print("written:", acc_path)
 
     fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.6))
     for ax, metric, ylabel in ((axes[0], "cosine", "cosine similarity"),

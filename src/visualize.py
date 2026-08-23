@@ -359,6 +359,11 @@ def reverse_flow_chart(panels, bg, class_names, title, name, axis_labels=None):
     class prototype (star), intermediate reverse Euler states as dots, a
     distinct square marker at the reverse endpoint (t = 0), and arrowheads
     along the path showing the direction of motion from t = 1 toward t = 0.
+    Optional per-panel 'ref_trajs' [(class_idx, xy)] are drawn as faint dashed
+    lines — the FORWARD class-centroid paths in the same plane, so reverse
+    paths can be compared against what forward motion looked like (they need
+    not coincide: reverse starts exactly at the prototype and reverse Euler is
+    not the inverse of the forward steps).
     Same contract as flow_trajectory_chart: one jointly fitted projection."""
     palette = class_palette(len(class_names))
     fig, axes = plt.subplots(1, len(panels), figsize=(6.8 * len(panels), 6.2), squeeze=False)
@@ -370,6 +375,9 @@ def reverse_flow_chart(panels, bg, class_names, title, name, axis_labels=None):
                        color=palette[j], marker="o")
             ax.scatter(bg["proto_xy"][j, 0], bg["proto_xy"][j, 1], marker="*", s=430,
                        color=palette[j], edgecolors="black", linewidths=1.3, zorder=5)
+        for class_idx, xy in p.get("ref_trajs", []):
+            ax.plot(xy[:, 0], xy[:, 1], color=palette[class_idx], lw=1.4,
+                    linestyle="--", alpha=0.45, zorder=3)
         for class_idx, xy in p["trajs"]:   # xy: [T+1, 2], descending time 1 -> 0
             c = palette[class_idx]
             ax.plot(xy[:, 0], xy[:, 1], color=c, lw=1.8, alpha=0.95, zorder=4)
@@ -394,9 +402,11 @@ def reverse_flow_chart(panels, bg, class_names, title, name, axis_labels=None):
                       label="intermediate reverse state"),
                Line2D([], [], linestyle="", marker="s", markersize=10, color="#AAAAAA",
                       markeredgecolor="black", label="reverse endpoint ($t = 0$)"),
-               Line2D([], [], color="#555555", lw=1.6, label="reverse path (arrows: $t=1 \\to 0$)")]
+               Line2D([], [], color="#555555", lw=1.6, label="reverse path (arrows: $t=1 \\to 0$)"),
+               Line2D([], [], color="#555555", lw=1.4, linestyle="--", alpha=0.6,
+                      label="forward class-centroid path (for comparison)")]
     fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.0),
-               ncol=4, fontsize=10.5, frameon=True)
+               ncol=5, fontsize=10, frameon=True)
     fig.suptitle(title, y=1.02, fontsize=13.5)
     fig.tight_layout()
     return _save(fig, name)
