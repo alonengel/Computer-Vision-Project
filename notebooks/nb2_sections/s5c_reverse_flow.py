@@ -18,6 +18,126 @@ for name in ("stage2_reverse_flow_fgvc_aircraft_dinov2_vits14_image_prototype_T1
     display(Image(str(REPO / "results" / "figures" / name), width=980))
 """),
     ("markdown", """
+**Animated backward integration.** The static panels above show the whole reverse path at once; the two animations below play it **step by step** — all ten class prototypes travelling backward together, one Euler step per frame, with an arrow at each state showing the direction of the step about to be taken ($-\\tfrac{1}{T}v_\\theta$ projected into the plane) and the clock running $t = 1 \\to 0$. One animation per branch: the spec branch (image prototypes) and the ‡ CLIP branch, where the progression makes the backward crossing of the image–text modality gap directly visible — the prototypes start in their own isolated region and march into the image-feature cloud. Same trained checkpoints, same joint-PCA plane and the same verified trajectories as the static figure; GIFs are embedded as images so they play without JavaScript.
+
+Both panels share axis limits set by the **data region and the Standard-FM paths**; rolled-out paths that escape the data region therefore run off-frame, which is the failure mode itself (including them would shrink everything else to an unreadable blob — the static figure above shows their full extent).
+"""),
+    ("code", """
+import base64
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from IPython.display import HTML
+from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib.lines import Line2D
+
+sys.path.insert(0, str(REPO / "scripts"))
+from make_figures_stage2 import REP_T, _joint_pca, _rep_setting
+from src.visualize import class_palette, dataset_label, encoder_label
+
+def animate_reverse(ds, enc, target, subtitle):
+    classes, idx, X, Xstd, Xroll, protos, y, sel_names, std, roll = \\
+        _rep_setting(ds, enc, target)
+    pca, (xy0, _, _, pxy) = _joint_pca([X.numpy(), Xstd.numpy(), Xroll.numpy(),
+                                        protos.numpy()])
+    series = []
+    for head, label in ((std, "Standard FM"), (roll, "Rolled-out FM")):
+        _, rtraj, times = head.reverse_transport(protos, REP_T, return_traj=True)
+        assert torch.allclose(rtraj[0], protos.float()), "reverse must start at the prototype"
+        assert float(times[0]) == 1.0 and float(times[-1]) == 0.0
+        series.append((label, np.stack([pca.transform(rtraj[:, j].numpy())
+                                        for j in range(len(classes))])))  # [C, T+1, 2]
+
+    palette = class_palette(len(sel_names))
+    # Limits are set by the data region (features + prototypes) and the
+    # Standard-FM reverse paths, shared by both panels. Rolled-out paths that
+    # escape the data region run off-frame — that divergence is the finding,
+    # and including it would shrink everything else to an unreadable blob.
+    allxy = np.concatenate([xy0, pxy, series[0][1].reshape(-1, 2)])
+    pad = 0.08 * (allxy.max(0) - allxy.min(0))
+    xlim = (allxy[:, 0].min() - pad[0], allxy[:, 0].max() + pad[0])
+    ylim = (allxy[:, 1].min() - pad[1], allxy[:, 1].max() + pad[1])
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.2, 6.4))
+    fig.subplots_adjust(top=0.78, bottom=0.14, wspace=0.06)
+    panels = []
+    for ax, (label, S) in zip(axes, series):
+        for j in range(len(classes)):
+            m = y == j
+            ax.scatter(xy0[m, 0], xy0[m, 1], s=10, alpha=0.13, color=palette[j])
+            ax.scatter(pxy[j, 0], pxy[j, 1], marker="*", s=380, color=palette[j],
+                       edgecolors="black", linewidths=1.2, zorder=5)
+        arts = []
+        for j in range(len(classes)):
+            c = palette[j]
+            trail, = ax.plot([], [], color=c, lw=1.8, alpha=0.95, zorder=4)
+            cur, = ax.plot([], [], marker="o", ms=9, color=c, mec="black", mew=1.1, zorder=7)
+            arrow = ax.quiver([S[j, 0, 0]], [S[j, 0, 1]], [0.0], [0.0], angles="xy",
+                              scale_units="xy", scale=1.0, color="black",
+                              width=0.006, zorder=8)
+            fin = ax.scatter([], [], marker="s", s=110, color=c, edgecolors="black",
+                             linewidths=1.1, zorder=9, visible=False)
+            arts.append({"trail": trail, "cur": cur, "arrow": arrow, "fin": fin,
+                         "xy": S[j]})
+        ax.set_xlim(*xlim); ax.set_ylim(*ylim)
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        ax.set_title(f"{label} (T = {REP_T})", fontsize=12.5)
+        panels.append(arts)
+
+    step_txt = fig.text(0.5, 0.855, "", ha="center", fontsize=13)
+    fig.legend(handles=[
+        Line2D([], [], marker="*", ls="", ms=15, mfc="white", mec="black",
+               label="class prototype (start, $t = 1$)"),
+        Line2D([], [], marker="o", ls="", ms=9, color="#555555", mec="black",
+               label="current reverse state"),
+        Line2D([], [], color="#555555", lw=1.8, label="path travelled so far"),
+        Line2D([], [], marker=r"$\\rightarrow$", ls="", ms=13, color="black",
+               label=r"step direction $-\\frac{1}{T}v_\\theta$"),
+        Line2D([], [], marker="s", ls="", ms=10, color="#555555", mec="black",
+               label="reverse endpoint ($t = 0$)")],
+        loc="lower center", bbox_to_anchor=(0.5, 0.005), ncol=5, fontsize=9.5,
+        frameon=True)
+    fig.suptitle(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: backward "
+                 f"integration from the class prototypes, step by step\\n{subtitle}",
+                 y=0.97, fontsize=13)
+
+    def draw(k):
+        for arts in panels:
+            for a in arts:
+                xy = a["xy"]
+                a["trail"].set_data(xy[:k + 1, 0], xy[:k + 1, 1])
+                a["cur"].set_data([xy[k, 0]], [xy[k, 1]])
+                if k < REP_T:
+                    a["arrow"].set_offsets(xy[k:k + 1])
+                    a["arrow"].set_UVC([xy[k + 1, 0] - xy[k, 0]],
+                                       [xy[k + 1, 1] - xy[k, 1]])
+                    a["arrow"].set_visible(True)
+                else:
+                    a["arrow"].set_visible(False)
+                a["fin"].set_visible(k == REP_T)
+                if k == REP_T:
+                    a["fin"].set_offsets(xy[-1:])
+        step_txt.set_text(f"reverse step {k} / {REP_T},   t = {(REP_T - k) / REP_T:.3f}")
+        return []
+
+    frames = [0] * 3 + list(range(1, REP_T)) + [REP_T] * 4
+    anim = FuncAnimation(fig, draw, frames=frames, interval=600, blit=False)
+    path = (REPO / "results" / "figures" /
+            f"stage2_reverse_anim_{ds}_{enc}_{target}_T{REP_T}.gif")
+    anim.save(path, writer=PillowWriter(fps=2))
+    plt.close(fig)
+    print(f"[OK] {path.name}")
+    b64 = base64.b64encode(path.read_bytes()).decode("ascii")
+    display(HTML(f'<img src="data:image/gif;base64,{b64}" width="940"/>'))
+
+animate_reverse("fgvc_aircraft", "dinov2_vits14", "image_prototype",
+                "spec branch: image-derived prototypes (K = 10, subset seed 0)")
+animate_reverse("fgvc_aircraft", "clip_rn50", "clip_text",
+                "‡ CLIP branch: text prototypes — watch the backward crossing "
+                "of the image–text modality gap")
+"""),
+    ("markdown", """
 **Samples vs prototypes at matching intermediate times.** For each selected class and every Euler time $t = k/T$: the centroid of that class's selected test samples along the **forward** flow, compared against the **reverse** trajectory that started at that class's prototype — cosine similarity ($L_2$ secondary), computed in the full feature space (384-d DINOv2 / 1024-d CLIP), *not* in the PCA plane. The curves show **mean ± sample std across the ten selected classes**; per-class raw values are in `results/metrics/stage2_reverse_intermediate_*.csv`.
 """),
     ("code", """
