@@ -219,8 +219,17 @@ def reverse_charts():
 
     from src.visualize import (STAGE2_COLORS, _save, head_label, reverse_flow_chart)
 
-    ds, enc, target = "fgvc_aircraft", "dinov2_vits14", "image_prototype"
-    tag = f"{ds}_{enc}_T{REP_T}"
+    # Spec branch (image prototypes) + the ‡ CLIP branch, where backward
+    # integration additionally has to re-cross the image-text modality gap.
+    for ds, enc, target in (("fgvc_aircraft", "dinov2_vits14", "image_prototype"),
+                            ("fgvc_aircraft", "clip_rn50", "clip_text")):
+        _reverse_one(ds, enc, target, plt, STAGE2_COLORS, _save, head_label,
+                     reverse_flow_chart)
+
+
+def _reverse_one(ds, enc, target, plt, STAGE2_COLORS, _save, head_label,
+                 reverse_flow_chart):
+    tag = f"{ds}_{enc}_{target}_T{REP_T}"
     classes, idx, X, Xstd, Xroll, protos, y, sel_names, std, roll = \
         _rep_setting(ds, enc, target)
     pca, (xy0, _, _, pxy) = _joint_pca([X.numpy(), Xstd.numpy(), Xroll.numpy(),
@@ -277,15 +286,16 @@ def reverse_charts():
                          "forward_fm_top1": fwd_acc,
                          "roundtrip_top1": rt_acc,
                          "reverse_endpoint_top1": end_acc})
-        print(f"[reverse-top1] {head.mode}: baseline {100 * base_acc:.2f} | "
-              f"forward {100 * fwd_acc:.2f} | round-trip {100 * rt_acc:.2f} | "
+        print(f"[reverse-top1] {ds}/{enc}/{target} {head.mode}: "
+              f"baseline {100 * base_acc:.2f} | forward {100 * fwd_acc:.2f} | "
+              f"round-trip {100 * rt_acc:.2f} | "
               f"reverse-endpoint {100 * end_acc:.2f}")
 
     print("figure:", reverse_flow_chart(
         panels, bg, sel_names,
         f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: approximate "
-        f"backward integration from the class prototypes\n(reverse Euler on the "
-        f"learned field, trained forward-only; same joint-PCA plane as the "
+        f"backward integration from the {target_label(target)}\n(reverse Euler on "
+        f"the learned field, trained forward-only; same joint-PCA plane as the "
         f"feature/trajectory figures; 10-shot models, subset seed 0; qualitative)",
         f"stage2_reverse_flow_{tag}.png", axis_labels=pc_labels(pca)))
 
@@ -314,8 +324,9 @@ def reverse_charts():
         ax.legend(fontsize=9)
     fig.suptitle(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: "
                  f"reverse-prototype state vs forward same-class centroid at "
-                 f"matching Euler times (384-d space, not the PCA plane)",
-                 y=1.03, fontsize=12.5)
+                 f"matching Euler times\n(toward {target_label(target)}; "
+                 f"full feature space, not the PCA plane)",
+                 y=1.06, fontsize=12.5)
     fig.tight_layout()
     print("figure:", _save(fig, f"stage2_reverse_intermediate_{tag}.png"))
 
