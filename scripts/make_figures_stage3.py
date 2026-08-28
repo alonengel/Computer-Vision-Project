@@ -62,10 +62,8 @@ def curve_charts():
         for ax in (ax_ce, ax_acc):
             ax.legend(fontsize=9)
         fig.suptitle(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: "
-                     f"end-to-end training behaviour of both Stage-3 strategies\n"
-                     f"(z → FM → frozen probe; identical metrics on shared axes; "
-                     f"validation-selected winners, subset seed 0)",
-                     y=1.06, fontsize=12.5)
+                     f"end-to-end training behaviour (both strategies, seed 0)",
+                     y=1.03, fontsize=13)
         fig.tight_layout()
         print("figure:", _save(fig, f"stage3_curves_{ds}_{enc}.png"))
 
@@ -75,7 +73,8 @@ def diag_charts():
     cfg = load_config()
     for ds, enc in cfg["stage3"]["settings"]:
         h1, h2 = curve(ds, enc, "fm_s1"), curve(ds, enc, "fm_s2")
-        fig, axes = plt.subplots(1, 4, figsize=(19.2, 4.2))
+        fig, axes2d = plt.subplots(2, 2, figsize=(11.6, 8.0))
+        axes = axes2d.ravel()
         a = axes[0]
         a.plot(h1["epoch"], h1["mean_disp"], color=S1_COLOR, lw=2,
                label="Strategy 1: mean ‖ẑ−z‖ (train)")
@@ -109,10 +108,8 @@ def diag_charts():
         for ax in axes:
             ax.set_xlabel("epoch")
         fig.suptitle(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: "
-                     f"strategy-internal diagnostics (separate axes — these "
-                     f"quantities are not comparable across strategies; S2 phase-1 "
-                     f"values describe the pre-update snapshot of each epoch)",
-                     y=1.07, fontsize=12)
+                     f"strategy-internal diagnostics (separate axes)",
+                     y=1.0, fontsize=13)
         fig.tight_layout()
         print("figure:", _save(fig, f"stage3_diag_{ds}_{enc}.png"))
 
@@ -141,10 +138,8 @@ def feature_charts():
                   {"title": "After Strategy 2 (ẑ)", "xy": xy2, "labels": y}]
         print("figure:", feature_projection(
             panels, [names_all[c] for c in classes],
-            f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: features before "
-            f"and after the Stage-3 FM (raw space, frozen-probe pipeline)\n(one PCA "
-            f"fitted jointly to all three feature sets — panels share a single plane; "
-            f"validation-selected models, subset seed 0; qualitative view)",
+            f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: features "
+            f"before and after the Stage-3 FM (joint PCA, seed 0)",
             f"stage3_features_{ds}_{enc}.png", axis_labels=pc_labels(pca)))
 
 

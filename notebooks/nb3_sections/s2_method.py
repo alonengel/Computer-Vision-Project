@@ -17,7 +17,7 @@ the target $\\hat{z}'$ is the **lowest-CE iterate** among the projected $\\{u_0,
 **Two guards, train/validation data only (the test set stayed sealed):**
 
 1. **Exact identity at initialization** — transported features **bit-exact equal** to the inputs, logits equal, predictions identical between the pipeline and the direct probe. Stronger than accuracy equality (two systems can share accuracy while disagreeing on many predictions). The cell below re-executes it.
-2. **Pinned-probe reproduction** — the probe is retrained with the identical Stage-1 recipe per (dataset, subset seed), its **validation** accuracy audited against `runs.csv` (|diff| < 0.25 pts; the run log shows 0.000 pts and exact best-epoch matches on all six probes), and the weights pinned so every method receives the same frozen classifier. Δ is computed against **this exact pinned probe** — `runs.csv` serves as a reproduction audit only (its test values were compared post-hoc at the final pass and matched exactly).
+2. **Pinned-probe reproduction** — the probe is retrained with the identical Stage-1 recipe per (dataset, subset seed), its **validation** accuracy audited against `runs.csv` (|diff| < 0.25 pts; the run log shows 0.000 pts and identical best epochs on all six probes), and the weights pinned so every method receives the same frozen classifier. Δ is computed against **this exact pinned probe** — `runs.csv` serves as a reproduction audit only; the cell below displays the recorded accuracies reproducing the published values within $10^{-12}$ (test compared post-hoc at the final pass).
 """),
     ("code", """
 import torch
@@ -54,14 +54,17 @@ for ds, enc in cfg["stage3"]["settings"]:
                      "Stage-1 val (%)": round(100 * ref["val_acc"], 4),
                      "pinned test (%)": round(100 * pin["test_acc"], 4),
                      "Stage-1 test (%)": round(100 * ref["test_acc"], 4),
-                     "identical": bool(np.isclose(pin["val_acc"], ref["val_acc"],
-                                                  atol=1e-12)
-                                       and np.isclose(pin["test_acc"],
-                                                      ref["test_acc"], atol=1e-12))})
+                     "within 1e-12": bool(np.isclose(pin["val_acc"], ref["val_acc"],
+                                                     rtol=0, atol=1e-12)
+                                          and np.isclose(pin["test_acc"],
+                                                         ref["test_acc"],
+                                                         rtol=0, atol=1e-12))})
 audit = pd.DataFrame(rows)
-assert audit["identical"].all()
-print("Pinned-probe reproduction audit — bit-identical to the published "
-      "Stage-1 numbers on all six probes:")
+assert audit["within 1e-12"].all()
+print("Pinned-probe reproduction audit — recorded validation and test accuracies "
+      "reproduce the published Stage-1 values within 1e-12 on all six probes "
+      "(equal accuracies do not by themselves prove identical weights; the "
+      "feature-level bit-exactness claim belongs to the identity guard above):")
 display(audit)
 """),
 ]
