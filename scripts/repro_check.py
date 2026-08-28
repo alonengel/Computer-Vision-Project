@@ -169,6 +169,100 @@ def check_stage2():
     return bad
 
 
+def check_stage3():
+    """Stage-3 artifacts: summary re-derived from raw arrays and the per-run
+    table; delta consistency against the STORED pinned-probe baseline (the
+    mathematical baseline per ADR 0008 — runs.csv is a separate audit, checked
+    at run time); run-0 prediction files; generated tables regenerate and match.
+    Skipped until Stage 3 has run."""
+    if not (metrics_dir() / "runs_stage3.csv").exists():
+        print("stage3: no runs_stage3.csv yet — skipped")
+        return 0
+    from src.evaluation import load_predictions
+
+    runs3 = pd.read_csv(metrics_dir() / "runs_stage3.csv")
+    summary3 = pd.read_csv(metrics_dir() / "summary_stage3.csv")
+    ok3 = runs3[runs3.get("status", "ok") == "ok"]
+    bad = 0
+
+    for _, row in summary3.iterrows():
+        name = f"stage3_{row['head']}_{row['dataset']}_{row['encoder']}_{row['k_shot']}"
+        raw = np.load(metrics_dir("raw") / f"{name}.npy")
+        m, s = summarize(raw)
+        sel = ok3[(ok3["dataset"] == row["dataset"]) & (ok3["encoder"] == row["encoder"])
+                  & (ok3["head"] == row["head"]) & (ok3["k_shot"] == row["k_shot"])]
+        dm, dstd = summarize(sel["delta_acc"].to_numpy())
+        if len(raw) != row["n_runs"] or not np.isclose(m, row["mean_acc"], atol=1e-9) \
+                or not np.isclose(s, row["std_acc"], atol=1e-9) \
+                or not np.isclose(dm, row["delta_mean"], atol=1e-9) \
+                or not np.isclose(dstd, row["delta_std"], atol=1e-9) \
+                or not np.allclose(np.sort(sel["test_acc"].to_numpy()), np.sort(raw),
+                                   atol=1e-9):
+            bad += 1
+            print(f"MISMATCH stage3 {name}: summary/raw/runs disagree")
+
+    # delta = test - pinned-probe baseline, and the probe rows anchor baseline_acc
+    for (ds, enc, seed), g in ok3.groupby(["dataset", "encoder", "seed"]):
+        base = g[g["head"] == "pinned_probe"]
+        if len(base) != 1:
+            bad += 1
+            print(f"MISSING stage3 pinned-probe row for {ds}/{enc}/seed{seed}")
+            continue
+        b = float(base["test_acc"].iloc[0])
+        for _, r in g.iterrows():
+            if not np.isclose(r["baseline_acc"], b, atol=1e-9) \
+                    or not np.isclose(r["test_acc"] - b, r["delta_acc"], atol=1e-9):
+                bad += 1
+                print(f"MISMATCH stage3 delta {ds}/{enc}/{r['head']}/seed{seed}")
+
+    checked = 0
+    for _, row in ok3[ok3["run"] == 0].iterrows():
+        name = f"run3_{row['dataset']}_{row['encoder']}_{row['head']}_{row['k_shot']}"
+        try:
+            pred, target = load_predictions(name)
+        except FileNotFoundError:
+            bad += 1
+            print(f"MISSING stage3 predictions {name}")
+            continue
+        acc = float((np.asarray(pred) == np.asarray(target)).mean())
+        checked += 1
+        if not np.isclose(acc, row["test_acc"], atol=1e-6):
+            bad += 1
+            print(f"MISMATCH stage3 predictions {name}")
+
+    # optional joint extension: same re-derivation pattern, if present
+    if (metrics_dir() / "runs_stage3_joint.csv").exists():
+        rj = pd.read_csv(metrics_dir() / "runs_stage3_joint.csv")
+        sj = pd.read_csv(metrics_dir() / "summary_stage3_joint.csv")
+        for _, row in sj.iterrows():
+            name = f"stage3_{row['head']}_{row['dataset']}_{row['encoder']}_{row['k_shot']}"
+            raw = np.load(metrics_dir("raw") / f"{name}.npy")
+            m, s = summarize(raw)
+            sel = rj[(rj["dataset"] == row["dataset"]) & (rj["encoder"] == row["encoder"])
+                     & (rj["head"] == row["head"])]
+            dm, dstd = summarize(sel["delta_acc"].to_numpy())
+            if len(raw) != row["n_runs"] or not np.isclose(m, row["mean_acc"], atol=1e-9) \
+                    or not np.isclose(s, row["std_acc"], atol=1e-9) \
+                    or not np.isclose(dm, row["delta_mean"], atol=1e-9) \
+                    or not np.isclose(dstd, row["delta_std"], atol=1e-9):
+                bad += 1
+                print(f"MISMATCH stage3-joint {name}")
+            for _, r in sel.iterrows():
+                if not np.isclose(r["test_acc"] - r["baseline_acc"], r["delta_acc"],
+                                  atol=1e-9):
+                    bad += 1
+                    print(f"MISMATCH stage3-joint delta {name} seed{r['seed']}")
+
+    tables3 = ["stage3_main_table.md", "stage3_lambda_ablation_table.md",
+               "stage3_sweep_table.md"]
+    if (metrics_dir() / "summary_stage3_joint.csv").exists():
+        tables3.append("stage3_joint_table.md")
+    bad += _regenerate_and_compare("make_tables_stage3", tuple(tables3))
+    print(f"stage3: {len(summary3)} summary rows, {len(runs3)} run rows, "
+          f"{checked} prediction files checked, {bad} problems")
+    return bad
+
+
 def main():
     summary = pd.read_csv(metrics_dir() / "summary.csv")
     runs = pd.read_csv(metrics_dir() / "runs.csv")
@@ -193,6 +287,7 @@ def main():
     bad += check_predictions(runs)
     bad += check_tables()
     bad += check_stage2()
+    bad += check_stage3()
     if bad:
         sys.exit(f"repro check FAILED: {bad} problems")
     print("repro check PASSED: summary numbers, prediction files and generated "

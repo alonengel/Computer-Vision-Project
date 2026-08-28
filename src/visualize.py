@@ -235,9 +235,11 @@ def feature_projection(panels, class_names, title, name, axis_labels=None):
     handles, labels_ = axes[0][0].get_legend_handles_labels()
     from matplotlib.lines import Line2D
 
-    handles.append(Line2D([], [], linestyle="", marker="*", markersize=15,
-                          color="white", markeredgecolor="black", label="class prototype"))
-    labels_.append("class prototype")
+    if any(p.get("proto_xy") is not None for p in panels):
+        handles.append(Line2D([], [], linestyle="", marker="*", markersize=15,
+                              color="white", markeredgecolor="black",
+                              label="class prototype"))
+        labels_.append("class prototype")
     fig.legend(handles, labels_, loc="upper center", bbox_to_anchor=(0.5, 0.0),
                ncol=min(6, len(labels_)), fontsize=10, frameon=True, markerscale=1.6)
     fig.suptitle(title, y=1.02, fontsize=13.5)

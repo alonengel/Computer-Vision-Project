@@ -1,10 +1,10 @@
 ﻿# CVLAB Summer Project — Classification Baselines and Flow Matching
 
-Three-stage course project. **`_docs/stage_1.pdf` is the single source of truth for Stage 1** (ADR 0004).
+Three-stage course project. The professor's PDFs are the single source of truth per stage: `_docs/stage_1.pdf` (ADR 0004), `_docs/stage_2.pdf` (ADR 0007), `_docs/stage_3.pdf` (ADR 0008). **All three stages are complete.**
 
-1. **Stage 1 (this repo state)** — a reproducible classification pipeline on **frozen** pretrained encoders: a linear probe (required) plus both prototype branches (image-derived class prototypes and zero-shot CLIP), on DTD, FGVC-Aircraft and Oxford Flowers-102, with training-set sizes K ∈ {5, 10, full}.
-2. **Stage 2** — Flow Matching as the decision layer, transporting embeddings toward the selected branch's class representation.
-3. **Stage 3** — Flow Matching between the frozen encoder and the linear probe, trained jointly with cross-entropy (encoder stays frozen).
+1. **Stage 1** — a reproducible classification pipeline on **frozen** pretrained encoders: a linear probe (required) plus both prototype branches (image-derived class prototypes and zero-shot CLIP), on DTD, FGVC-Aircraft and Oxford Flowers-102 ‡, K ∈ {5, 10, full}.
+2. **Stage 2** — Flow Matching as the decision layer: transport frozen features toward the class prototypes (standard vs rolled-out training, T ∈ {4, 12}), compared against the Stage-1 prototype baseline on identical subsets/seeds; + the CLIP‑text branch ‡ and a full raw-feature comparison grid.
+3. **Stage 3** — an FM transformation before the **frozen** Stage-1 linear probe (`z → FM → ẑ → frozen probe`), initialized to exact identity; end-to-end rolled-out CE training vs classifier-guided-target training, against the pinned probe; + an optional joint fine-tuning extension with a classifier-only attribution control.
 
 > The earlier pre-specification implementation (MNIST / CIFAR-10 / Mini-ImageNet, episodic few-shot protocol) is archived at tag `stage1-v1-episodic` and branch `archive/stage1-v1-episodic`. Its numbers are **not** current — see ADR 0004.
 
@@ -44,6 +44,11 @@ C:\Users\Alon\Desktop\cv-ex2\rocm_win312\Scripts\python.exe
 .\tasks.ps1 figures   # all figures -> results/figures/
 .\tasks.ps1 notebook  # build + execute the presentation notebook
 .\tasks.ps1 check     # repro check: re-derive every summary number from raw artifacts
+.\tasks.ps1 tests     # unit tests (FM forward/reverse transport)
+
+# Stage 2:  run2 / run2raw / smoke2 / tables2 / figures2 / notebook2
+# Stage 3:  run3 / smoke3 / tables3 / figures3 / notebook3
+#           (+ scripts/run_stage3_joint.py for the optional joint extension)
 ```
 
 `extract`, `run` and `smoke` accept dataset names to restrict the work, e.g. `python scripts/run_experiments.py dtd`.
@@ -55,10 +60,10 @@ C:\Users\Alon\Desktop\cv-ex2\rocm_win312\Scripts\python.exe
 | [config/config.json](config/config.json) | All tunables: datasets, encoders, K values, seeds, probe hyperparameters, prompts |
 | [src/](src/) | Library code: data, embeddings, classifiers, evaluation, visualization |
 | [scripts/](scripts/) | Entry points (prepare, extract, run, tables, figures, repro check) |
-| [notebooks/](notebooks/) | Modular notebook sections + builder → presentation notebook |
-| [docs/REPORT_STAGE1.md](docs/REPORT_STAGE1.md) | Formal Stage 1 report |
+| [notebooks/](notebooks/) | Modular notebook sections + builder → one presentation notebook per stage |
+| [docs/REPORT_STAGE1.md](docs/REPORT_STAGE1.md) · [REPORT_STAGE2.md](docs/REPORT_STAGE2.md) · [REPORT_STAGE3.md](docs/REPORT_STAGE3.md) | Formal per-stage reports |
 | [docs/LAB_NOTEBOOK.md](docs/LAB_NOTEBOOK.md) | Chronological log: every step, command, error and fix |
-| [docs/adr/](docs/adr/) | Decision records (0004 = spec adoption, 0005 = group choices) |
+| [docs/adr/](docs/adr/) | Decision records (0004 spec adoption · 0005/0006 group choices · 0007 Stage-2 · 0008 Stage-3 pre-registration) |
 | results/features/ | Cached frozen features (gitignored, reproducible via `extract`) |
 | results/artifacts/ | K-shot subset indices, CLIP text prototypes, probe training curves, predictions |
 | results/metrics/, results/figures/ | Committed experiment outputs |

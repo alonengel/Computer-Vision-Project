@@ -2,6 +2,7 @@
 data/
 results/features/
 results/artifacts/fm_models/
+results/artifacts/stage3_models/
 *.pt.tmp
 
 # Python

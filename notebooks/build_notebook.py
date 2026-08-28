@@ -17,7 +17,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 STAGES = {"1": ("nb_sections", "stage1_presentation.ipynb"),
-          "2": ("nb2_sections", "stage2_presentation.ipynb")}
+          "2": ("nb2_sections", "stage2_presentation.ipynb"),
+          "3": ("nb3_sections", "stage3_presentation.ipynb")}
 
 
 def load_cells(sections_dir):

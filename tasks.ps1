@@ -29,5 +29,13 @@ switch ($Task) {
         & $PY notebooks\build_notebook.py 2
         & $PY -m jupyter nbconvert --to notebook --execute --inplace notebooks\stage2_presentation.ipynb
     }
-    default    { Write-Host "Unknown task '$Task'. Tasks: setup data extract run smoke tables figures notebook check run2 smoke2 figures2 notebook2" }
+    "run3"     { & $PY scripts\run_stage3.py }
+    "smoke3"   { & $PY scripts\run_stage3.py --smoke }
+    "tables3"  { & $PY scripts\make_tables_stage3.py }
+    "figures3" { & $PY scripts\make_figures_stage3.py }
+    "notebook3" {
+        & $PY notebooks\build_notebook.py 3
+        & $PY -m jupyter nbconvert --to notebook --execute --inplace notebooks\stage3_presentation.ipynb
+    }
+    default    { Write-Host "Unknown task '$Task'. Tasks: setup data extract run smoke tables figures notebook check tests run2 run2raw smoke2 tables2 figures2 notebook2 run3 smoke3 tables3 figures3 notebook3" }
 }
