@@ -1,0 +1,35 @@
+[
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "fm_s1",
+    "k_shot": "10shot",
+    "n_runs": 1,
+    "mean_acc": 0.4691489338874817,
+    "std_acc": 0.0,
+    "delta_mean": 0.028191477060317993,
+    "delta_std": 0.0
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "fm_s2",
+    "k_shot": "10shot",
+    "n_runs": 1,
+    "mean_acc": 0.46276596188545227,
+    "std_acc": 0.0,
+    "delta_mean": 0.021808505058288574,
+    "delta_std": 0.0
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "pinned_probe",
+    "k_shot": "10shot",
+    "n_runs": 1,
+    "mean_acc": 0.4409574568271637,
+    "std_acc": 0.0,
+    "delta_mean": 0.0,
+    "delta_std": 0.0
+  }
+]

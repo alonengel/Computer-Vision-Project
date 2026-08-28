@@ -1,0 +1,46 @@
+[
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "fm_joint",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.5388297835985819,
+    "std_acc": 0.006271181085145136,
+    "delta_mean": -0.004255314668019612,
+    "delta_std": 0.0037234127521912457
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "head": "clf_only_continued",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.542553186416626,
+    "std_acc": 0.0046371000018306935,
+    "delta_mean": -0.0005319118499755859,
+    "delta_std": 0.001917835449113884
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "head": "fm_joint",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.5185518662134806,
+    "std_acc": 0.009593138806158892,
+    "delta_mean": 0.005600571632385254,
+    "delta_std": 0.009788216652491223
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "head": "clf_only_continued",
+    "k_shot": "10shot",
+    "n_runs": 3,
+    "mean_acc": 0.5193519393603007,
+    "std_acc": 0.009837158263090201,
+    "delta_mean": 0.006400644779205322,
+    "delta_std": 0.0007550495137951296
+  }
+]

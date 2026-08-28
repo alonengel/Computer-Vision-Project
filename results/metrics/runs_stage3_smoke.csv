@@ -1,0 +1,4 @@
+dataset,encoder,head,lam,k_shot,run,seed,seed_type,n_train,status,fallback,checkpoint_epoch,val_acc,test_acc,baseline_acc,delta_acc,beta,m
+dtd,resnet18,fm_s1,0.0,10shot,0,0,subset,470,ok,0,3,0.45691487193107605,0.4691489338874817,0.4409574568271637,0.028191477060317993,,
+dtd,resnet18,fm_s2,,10shot,0,0,subset,470,ok,0,4,0.46329784393310547,0.46276596188545227,0.4409574568271637,0.021808505058288574,0.25,1.0
+dtd,resnet18,pinned_probe,,10shot,0,0,subset,470,ok,0,,0.4319148659706116,0.4409574568271637,0.4409574568271637,0.0,,

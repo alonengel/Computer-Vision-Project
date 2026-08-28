@@ -1,0 +1,4 @@
+dataset,encoder,head,k_shot,n_runs,mean_acc,std_acc,delta_mean,delta_std
+dtd,resnet18,fm_s1,10shot,1,0.4691489338874817,0.0,0.028191477060317993,0.0
+dtd,resnet18,fm_s2,10shot,1,0.46276596188545227,0.0,0.021808505058288574,0.0
+dtd,resnet18,pinned_probe,10shot,1,0.4409574568271637,0.0,0.0,0.0

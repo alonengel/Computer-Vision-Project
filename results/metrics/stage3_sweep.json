@@ -1,0 +1,222 @@
+[
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s1",
+    "param": "lam=0",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.49787232279777527,
+    "val_ce": 1.807519793510437,
+    "checkpoint_epoch": 1
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s1",
+    "param": "lam=1",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5090425610542297,
+    "val_ce": 1.8638452291488647,
+    "checkpoint_epoch": 110
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s1",
+    "param": "lam=10",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5058510303497314,
+    "val_ce": 1.799094319343567,
+    "checkpoint_epoch": 103
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s1",
+    "param": "lam=100",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5074467658996582,
+    "val_ce": 1.7908865213394165,
+    "checkpoint_epoch": 1
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s2",
+    "param": "beta=0.25,m=1",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5196808576583862,
+    "val_ce": 1.798717737197876,
+    "checkpoint_epoch": 167
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s2",
+    "param": "beta=0.25,m=3",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5175531506538391,
+    "val_ce": 1.8042365312576294,
+    "checkpoint_epoch": 156
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s2",
+    "param": "beta=0.5,m=1",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5186170339584351,
+    "val_ce": 1.7993886470794678,
+    "checkpoint_epoch": 157
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s2",
+    "param": "beta=0.5,m=3",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5180850625038147,
+    "val_ce": 1.8021903038024902,
+    "checkpoint_epoch": 152
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s2",
+    "param": "beta=1.0,m=1",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5191489458084106,
+    "val_ce": 1.8050695657730103,
+    "checkpoint_epoch": 145
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s2",
+    "param": "beta=1.0,m=3",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5170212388038635,
+    "val_ce": 1.8050129413604736,
+    "checkpoint_epoch": 10
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s1",
+    "param": "lam=0",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5373536944389343,
+    "val_ce": 2.3871874809265137,
+    "checkpoint_epoch": 16
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s1",
+    "param": "lam=1",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.53945392370224,
+    "val_ce": 2.3308451175689697,
+    "checkpoint_epoch": 86
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s1",
+    "param": "lam=10",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5304530262947083,
+    "val_ce": 2.3107123374938965,
+    "checkpoint_epoch": 184
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s1",
+    "param": "lam=100",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5271527171134949,
+    "val_ce": 2.2961747646331787,
+    "checkpoint_epoch": 156
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s2",
+    "param": "beta=0.25,m=1",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5505550503730774,
+    "val_ce": 2.536813735961914,
+    "checkpoint_epoch": 42
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s2",
+    "param": "beta=0.25,m=3",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5577557682991028,
+    "val_ce": 2.5688741207122803,
+    "checkpoint_epoch": 17
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s2",
+    "param": "beta=0.5,m=1",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5553554892539978,
+    "val_ce": 2.520057439804077,
+    "checkpoint_epoch": 62
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s2",
+    "param": "beta=0.5,m=3",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5610560774803162,
+    "val_ce": 2.523200750350952,
+    "checkpoint_epoch": 43
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s2",
+    "param": "beta=1.0,m=1",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5577557682991028,
+    "val_ce": 2.531832456588745,
+    "checkpoint_epoch": 34
+  },
+  {
+    "dataset": "fgvc_aircraft",
+    "encoder": "dinov2_vits14",
+    "strategy": "s2",
+    "param": "beta=1.0,m=3",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.5610560774803162,
+    "val_ce": 2.537548303604126,
+    "checkpoint_epoch": 17
+  }
+]

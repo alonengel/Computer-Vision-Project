@@ -1,0 +1,24 @@
+[
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s1",
+    "param": "lam=0",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.45691487193107605,
+    "val_ce": 1.9930983781814575,
+    "checkpoint_epoch": 3
+  },
+  {
+    "dataset": "dtd",
+    "encoder": "resnet18",
+    "strategy": "s2",
+    "param": "beta=0.25,m=1",
+    "status": "ok",
+    "fallback": 0,
+    "val_acc": 0.46329784393310547,
+    "val_ce": 2.354567050933838,
+    "checkpoint_epoch": 4
+  }
+]
