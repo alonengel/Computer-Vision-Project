@@ -49,6 +49,9 @@ C:\Users\Alon\Desktop\cv-ex2\rocm_win312\Scripts\python.exe
 # Stage 2:  run2 / run2raw / smoke2 / tables2 / figures2 / notebook2
 # Stage 3:  run3 / smoke3 / tables3 / figures3 / notebook3
 #           (+ scripts/run_stage3_joint.py for the optional joint extension)
+# Stage 3 talk notebook (presentation-focused companion of stage3_presentation.ipynb; same tables of record):
+#           python notebooks/build_talk_notebook.py
+#           python -m jupyter nbconvert --to notebook --execute --inplace notebooks/stage3_presentation_talk.ipynb
 ```
 
 `extract`, `run` and `smoke` accept dataset names to restrict the work, e.g. `python scripts/run_experiments.py dtd`.
@@ -60,7 +63,7 @@ C:\Users\Alon\Desktop\cv-ex2\rocm_win312\Scripts\python.exe
 | [config/config.json](config/config.json) | All tunables: datasets, encoders, K values, seeds, probe hyperparameters, prompts |
 | [src/](src/) | Library code: data, embeddings, classifiers, evaluation, visualization |
 | [scripts/](scripts/) | Entry points (prepare, extract, run, tables, figures, repro check) |
-| [notebooks/](notebooks/) | Modular notebook sections + builder → one presentation notebook per stage |
+| [notebooks/](notebooks/) | Modular notebook sections + builder → one presentation notebook per stage; `stage3_presentation_talk.ipynb` (built by `build_talk_notebook.py` from `nb3_talk_sections/`) is the 25–30-min talk version of Stage 3 with collapsed Hebrew speaker notes |
 | [docs/REPORT_STAGE1.md](docs/REPORT_STAGE1.md) · [REPORT_STAGE2.md](docs/REPORT_STAGE2.md) · [REPORT_STAGE3.md](docs/REPORT_STAGE3.md) | Formal per-stage reports |
 | [docs/LAB_NOTEBOOK.md](docs/LAB_NOTEBOOK.md) | Chronological log: every step, command, error and fix |
 | [docs/adr/](docs/adr/) | Decision records (0004 spec adoption · 0005/0006 group choices · 0007 Stage-2 · 0008 Stage-3 pre-registration) |
