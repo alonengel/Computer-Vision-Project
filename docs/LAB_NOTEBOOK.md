@@ -268,12 +268,6 @@ Per the user-supplied implementation prompt: the spec's optional "explore the le
 
 **Gotcha:** `make_tables_stage3.py` prints each table after writing it; under the agent's console (cp1252) the `Δ` glyph raised `UnicodeEncodeError` after the first table, leaving the other three files stale (caught by `repro_check`: 2 content mismatches). Re-run with `PYTHONIOENCODING=utf-8`; `tasks.ps1 tables3` from PowerShell is unaffected.
 
-## 2026-09-10 — Checkpoint chart: displacement shown relative to the feature norm (user question → approved)
-
-**Question (user):** should the displacement ‖ẑ−z‖ be divided by ‖z‖? **Assessment:** yes — the mean feature norm differs ≈2× between the encoders (≈23.6 on DTD/ResNet-18 vs ≈49.7 on FGVC/DINOv2), so absolute units are not comparable across the two rows of the chart, and the relative quantity is the one both methods are defined in (the Rolled regularizer penalizes ‖ẑ−z‖²/‖z‖²; the Guided trust region is 10% of ‖z‖). Approved by the user with the request that it be revertible: done as one self-contained commit (`git revert <sha>` undoes it without rewriting history).
-
-**Change:** `checkpoint_chart()` now recomputes, from the checkpointed models on their training subsets, the per-sample mean of ‖ẑ−z‖/‖z‖ (%) and shows it in the right-hand panels (label: % and the absolute mean in parentheses; dashed reference = the Guided trust-region radius, 10%); the post-hoc absolute mean is asserted to agree with the training-history value at the checkpoint within 0.1 units (observed ≤0.06). Values (all seeds): Guided ≈9.7–9.9% on DTD and ≈9.0–9.4% on FGVC (at its cap; per-sample maxima 11–14% because the FM regresses toward boundary targets but is itself unconstrained); Rolled ≈11–15% on DTD and ≈2.3–2.5% on FGVC. Texts updated consistently: §4 lead-in + a new reading paragraph, §5 ("≈5–13% of the mean feature norm" → the per-strategy relative values), §6 point 3 and the extension paragraphs (joint FM ≈11% / ≈5% of the mean norm at the checkpoint → ≈135% / ≈200% by epoch 200), and the two corresponding sentences in `REPORT_STAGE3.md`. No result, table or accuracy changed; notebook rebuilt (34 cells, 0 errors); `repro_check` green.
-
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*
