@@ -8,8 +8,12 @@ axes — they measure different things. Feature viz: one PCA fitted jointly on
 [z, z_hat_S1, z_hat_S2] in RAW space, the shared viz_selection classes and
 class colours, representative seed 0. Sweep chart: the seed-0 validation sweep
 as one panel per (dataset, strategy), replacing the sweep table in the notebook.
+Checkpoint chart: placement + displacement of the final models (replaces the
+notebook table). Optional extension: joint-vs-control curves and a joint-PCA
+feature figure (needs the models checkpointed by run_stage3_joint.py).
 
-Usage: python scripts/make_figures_stage3.py [curves|diag|features|sweep]
+Usage: python scripts/make_figures_stage3.py
+       [curves|diag|features|sweep|checkpoints|joint_curves|joint_features]
 """
 import json
 import sys
@@ -239,10 +243,161 @@ def sweep_chart():
     print("figure:", _save(fig, "stage3_sweep.png"))
 
 
+# --------------------------------------------------------------------------- #
+# Checkpoint placement + displacement (replaces the §4 table in the notebook)
+# --------------------------------------------------------------------------- #
+def checkpoint_chart():
+    """One row per dataset: (left) validation-selected checkpoint epoch per subset
+    seed, annotated with the best validation top-1; (right) mean ‖ẑ−z‖ at that
+    checkpoint — grouped bars, Strategy 1 vs Strategy 2. Checkpoint epochs come
+    from runs_stage3.csv (the table of record, full tie-break rule); the
+    displacement is read from the training history at that epoch."""
+    from src.evaluation import metrics_dir
+
+    cfg = load_config()
+    r3 = pd.read_csv(metrics_dir() / "runs_stage3.csv")
+    settings, seeds = cfg["stage3"]["settings"], cfg["stage3"]["subset_seeds"]
+    n_epochs = cfg["stage3"]["training"]["epochs"]
+    heads = (("fm_s1", S1_COLOR, "Strategy 1"), ("fm_s2", S2_COLOR, "Strategy 2"))
+    width = 0.36
+    fig, axes = plt.subplots(len(settings), 2, figsize=(14.5, 4.7 * len(settings)),
+                             squeeze=False)
+    for i, (ds, enc) in enumerate(settings):
+        ax_ep, ax_disp = axes[i]
+        disp_max = 0.0
+        for j, (head, color, name) in enumerate(heads):
+            eps, disps, accs = [], [], []
+            for seed in seeds:
+                row = r3[(r3["dataset"] == ds) & (r3["encoder"] == enc)
+                         & (r3["head"] == head) & (r3["seed"] == seed)].iloc[0]
+                h = curve(ds, enc, head, seed)
+                ep = int(row["checkpoint_epoch"])
+                assert h["epoch"][ep] == ep
+                eps.append(ep)
+                disps.append(h["mean_disp"][ep])
+                accs.append(100 * max(h["val_acc"]))
+            x = np.arange(len(seeds)) + (j - 0.5) * width
+            ax_ep.bar(x, eps, width, color=color, label=name)
+            ax_disp.bar(x, disps, width, color=color, label=name)
+            for xb, ep, acc in zip(x, eps, accs):
+                ax_ep.text(xb, ep + 0.015 * n_epochs, f"ep {ep}\n{acc:.2f}%",
+                           ha="center", va="bottom", fontsize=9.5)
+            for xb, d in zip(x, disps):
+                ax_disp.text(xb, d * 1.02, f"{d:.2f}", ha="center", va="bottom",
+                             fontsize=9.5)
+            disp_max = max(disp_max, max(disps))
+        for ax in (ax_ep, ax_disp):
+            ax.set_xticks(range(len(seeds)))
+            ax.set_xticklabels([f"subset seed {s}" for s in seeds], fontsize=10.5)
+            ax.tick_params(axis="y", labelsize=10)
+            ax.legend(fontsize=9.5, loc="upper left")
+        ax_ep.set_ylim(0, n_epochs * 1.28)
+        ax_ep.set_ylabel(f"checkpoint epoch (of {n_epochs})", fontsize=11)
+        ax_ep.set_title(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: "
+                        f"validation-selected checkpoint\n(label: epoch · best validation top-1)",
+                        fontsize=11.5)
+        ax_disp.set_ylim(0, disp_max * 1.3)
+        ax_disp.set_ylabel("mean ‖ẑ−z‖ at the checkpoint (feature units)", fontsize=11)
+        ax_disp.set_title(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: "
+                          f"displacement of the checkpointed model\n(training set)",
+                          fontsize=11.5)
+    fig.suptitle("Checkpoint placement and displacement of the two mandatory strategies' "
+                 "final models, all subset seeds", fontsize=12.5, y=1.0)
+    fig.tight_layout()
+    print("figure:", _save(fig, "stage3_checkpoints.png"))
+
+
+# --------------------------------------------------------------------------- #
+# Optional extension (ADR 0008 §9): training behaviour + feature space
+# --------------------------------------------------------------------------- #
+JOINT_COLOR, CTRL_COLOR = "#6A3D9A", "#029E73"     # distinct from the S1 / S2 colours
+
+
+def joint_curve_charts():
+    """Joint FM + classifier fine-tuning vs the classifier-only continued-training
+    control, seed 0: post-epoch full-train (dashed) and validation (solid)
+    pipeline CE / top-1, with the validation-selected checkpoint of record
+    (runs_stage3_joint.csv) starred."""
+    from src.evaluation import metrics_dir
+
+    cfg = load_config()
+    rj = pd.read_csv(metrics_dir() / "runs_stage3_joint.csv")
+    series = (("joint", "fm_joint", JOINT_COLOR, "Joint FM + classifier"),
+              ("clf_only", "clf_only_continued", CTRL_COLOR, "Classifier-only control"))
+    for ds, enc in cfg["stage3"]["settings"]:
+        fig, (ax_ce, ax_acc) = plt.subplots(1, 2, figsize=(12.8, 4.6))
+        for fname, head, color, name in series:
+            h = curve(ds, enc, fname)
+            ep = int(rj[(rj["dataset"] == ds) & (rj["encoder"] == enc)
+                        & (rj["head"] == head) & (rj["seed"] == REP_SEED)]
+                     ["checkpoint_epoch"].iloc[0])
+            tr_ce = h.get("train_pipeline_ce", h["train_ce"])
+            ax_ce.plot(h["epoch"], tr_ce, color=color, ls="--", lw=1.8,
+                       label=f"{name} — train")
+            ax_ce.plot(h["epoch"], h["val_ce"], color=color, ls="-", lw=2.2,
+                       label=f"{name} — validation")
+            if "train_pipeline_acc" in h:
+                ax_acc.plot(h["epoch"], [100 * v for v in h["train_pipeline_acc"]],
+                            color=color, ls="--", lw=1.8, label=f"{name} — train")
+            ax_acc.plot(h["epoch"], [100 * v for v in h["val_acc"]], color=color,
+                        ls="-", lw=2.2, label=f"{name} — validation")
+            ax_acc.plot([ep], [100 * h["val_acc"][ep]], ls="none", marker="*", ms=16,
+                        color=color, mec="black", zorder=5,
+                        label=f"{name} — checkpoint (epoch {ep})")
+        ax_ce.set_xlabel("epoch"); ax_ce.set_ylabel("pipeline cross-entropy")
+        ax_acc.set_xlabel("epoch"); ax_acc.set_ylabel("pipeline top-1 accuracy (%)")
+        ax_ce.legend(fontsize=8.5)
+        ax_acc.legend(fontsize=8.5)
+        fig.suptitle(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: "
+                     f"optional extension — joint fine-tuning vs its classifier-only "
+                     f"control (seed 0)", y=1.03, fontsize=13)
+        fig.tight_layout()
+        print("figure:", _save(fig, f"stage3_curves_joint_{ds}_{enc}.png"))
+
+
+def joint_feature_charts():
+    """Feature space of the optional extension: original z, after the mandatory
+    Strategy-2 FM (frozen classifier), after the jointly fine-tuned FM — one PCA
+    fitted jointly on the three sets, the shared viz_selection classes and
+    class colours, seed 0. Uses the models checkpointed by run_stage3_joint.py."""
+    cfg = load_config()
+    vz = cfg["feature_viz"]
+    mdir = artifacts_dir("stage3_models")
+    for ds, enc in cfg["stage3"]["settings"]:
+        classes, idx = viz_selection(ds, vz["n_classes"], vz["class_seed"],
+                                     vz["max_per_class"])
+        f = load_features(ds, "test", enc)
+        names_all = f["class_names"]
+        X = f["features"][idx].float()          # RAW space — no normalization
+        remap = {int(c): j for j, c in enumerate(classes)}
+        y = np.array([remap[int(v)] for v in f["labels"][idx].numpy()])
+
+        probe = load_pinned_probe(mdir / f"probe_{ds}_{enc}_{k_label()}_seed{REP_SEED}.pt")
+        fm_s2 = load_stage3_fm(mdir / f"{ds}_{enc}_fm_s2_{k_label()}_seed{REP_SEED}.pt", probe)
+        joint_clf = load_pinned_probe(
+            mdir / f"{ds}_{enc}_joint_clf_{k_label()}_seed{REP_SEED}.pt")
+        fm_joint = load_stage3_fm(
+            mdir / f"{ds}_{enc}_fm_joint_{k_label()}_seed{REP_SEED}.pt", joint_clf)
+        Z2 = fm_s2.transport(X)
+        Zj = fm_joint.transport(X)
+        pca, (xy0, xy1, xy2) = _joint_pca([X.numpy(), Z2.numpy(), Zj.numpy()])
+        panels = [{"title": "Original features z", "xy": xy0, "labels": y},
+                  {"title": "After Strategy 2 (ẑ, frozen classifier)", "xy": xy1,
+                   "labels": y},
+                  {"title": "After joint FM + classifier fine-tuning (ẑ)", "xy": xy2,
+                   "labels": y}]
+        print("figure:", feature_projection(
+            panels, [names_all[c] for c in classes],
+            f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: features before "
+            f"and after the optional joint extension (joint PCA, seed 0)",
+            f"stage3_features_joint_{ds}_{enc}.png", axis_labels=pc_labels(pca)))
+
+
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
     steps = {"curves": curve_charts, "diag": diag_charts, "features": feature_charts,
-             "sweep": sweep_chart}
+             "sweep": sweep_chart, "checkpoints": checkpoint_chart,
+             "joint_curves": joint_curve_charts, "joint_features": joint_feature_charts}
     for name, fn in steps.items():
         if only and name != only:
             continue

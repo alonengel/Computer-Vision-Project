@@ -25,6 +25,24 @@ display(Markdown((REPO / "results" / "metrics" / "stage3_joint_table.md")
 **The control earns its place — and inverts the expected story.** The joint variant was pre-registered as an "upper reference"; it is not one. The joint variant does not outperform classifier-only continued training in these three seeds (FGVC: +0.56 ± 0.98 vs +0.64 ± 0.08; per-seed joint − control: +0.06 / −1.08 / +0.78; DTD: both ≈0/slightly negative), so **the results provide no evidence of an additional FM-attributable gain when the classifier is unfrozen**. The early validation-selected checkpoints (epochs 0–18, single-digit in 5 of 6 runs) are consistent with rapid overfitting in the K = 10 regime, but this experiment does not isolate classifier freezing as the cause — particularly because the best frozen configuration uses Strategy 2 while joint training uses a different objective. Even the closest matched-objective comparison (frozen Strategy 1 vs joint, both CE-trained) does not separate the two (+0.88 ± 0.23 vs +0.56 ± 0.98). **Empirically, frozen-classifier Strategy 2 remains the best tested configuration.** (Without the control, the +0.56 could have looked like a small FM win — exactly the confound the external review flagged.)
 """),
     ("markdown", """
+**Training behaviour of the extension (seed 0; validation-selected checkpoints starred).** Same conventions as §4 — dashed = train, solid = validation; the control's train curves are the post-epoch full-train metrics recorded by `run_stage3_joint.py` (the extension was re-executed unchanged on 2026-09-10 to checkpoint its models; every recorded number reproduced byte-identically — lab notebook). Both variants reach ≈100% train accuracy within a few epochs; the difference is what happens afterwards. With the classifier unfrozen, the joint objective keeps pushing: validation cross-entropy climbs monotonically (≈4.6 on FGVC-Aircraft, ≈7 on DTD by epoch 200), validation accuracy drifts down (to ≈51.5% / ≈42.6%), and the FM's mean displacement grows from 5.6 / 1.3 feature units at the checkpoint to ≈67 / ≈48 by the end (all seeds: 63–74 / 48–53) — larger than the features' own mean norms (≈50 on DINOv2, ≈24 on DTD). Nothing bounds the movement once CE is the only signal *and* the boundary can move too, so validation selects the earliest epochs (0–18). The classifier-only control changes slowly (validation CE ≈2.3 → 2.6 on FGVC-Aircraft, ≈1.8 → 1.95 on DTD) and checkpoints late on FGVC-Aircraft (epochs 171–197): the +0.64 it gains there is ordinary continued training — which is exactly why it accounts for the joint result.
+"""),
+    ("code", """
+for ds, enc in cfg["stage3"]["settings"]:
+    p = REPO / "results" / "figures" / f"stage3_curves_joint_{ds}_{enc}.png"
+    if p.exists():
+        display(Image(str(p), width=980))
+"""),
+    ("markdown", """
+**Feature space of the extension (seed 0).** The shared ten `viz_selection` classes, same test examples and colours as §5; one PCA fitted jointly on $[z, \\hat{z}_{S2}, \\hat{z}_{\\mathrm{joint}}]$ in raw space (a different joint fit than §5's, hence the slightly different plane: 32.6% / 15.8% of the variance on FGVC-Aircraft / DTD). At its validation-selected checkpoint the jointly trained FM has moved the features about as little as Strategy 2 (mean $\\lVert\\hat{z}-z\\rVert$ ≈ 5.6 vs 4.7 units on FGVC-Aircraft; ≈ 1.3 vs 2.3 on DTD), and the panels are correspondingly hard to tell apart — the checkpoint captures the model *before* the drift seen above. Qualitative only, as throughout.
+"""),
+    ("code", """
+for ds, enc in cfg["stage3"]["settings"]:
+    p = REPO / "results" / "figures" / f"stage3_features_joint_{ds}_{enc}.png"
+    if p.exists():
+        display(Image(str(p), width=980))
+"""),
+    ("markdown", """
 ### Limitations
 
 - **$n = 3$ subset seeds**; spreads are sample standard deviations; no significance claims. The spread measures subset-sampling variability only (probe-init and FM-init are fixed).

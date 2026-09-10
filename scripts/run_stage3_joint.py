@@ -12,7 +12,10 @@ finiteness) rather than restarting — acceptable for the optional extension,
 and no such event occurred. No sweep. Delta is against the same pinned probes
 as the main table; test evaluated once at the end over locked checkpoints.
 Outputs: runs_stage3_joint.csv / summary_stage3_joint.csv, curves, run-0
-predictions.
+predictions, and the checkpointed models under stage3_models/ (the joint FM with
+its fine-tuned classifier; the control classifier) so the notebook figures can
+be regenerated without retraining. The control history records the same
+post-epoch full-train metrics as fit_joint (train_pipeline_ce / _acc).
 """
 import copy
 import json
@@ -43,7 +46,8 @@ def continue_train_classifier(probe, Xtr, ytr, Xval, yval, lr, epochs, batch, se
     Xv, yv = Xval.float().to(dev), yval.long().to(dev)
     opt = torch.optim.AdamW(clf.parameters(), lr=lr, weight_decay=1e-4)
     g = torch.Generator().manual_seed(seed)
-    hist = {k: [] for k in ("epoch", "train_ce", "val_ce", "val_acc")}
+    hist = {k: [] for k in ("epoch", "train_ce", "train_pipeline_ce",
+                            "train_pipeline_acc", "val_ce", "val_acc")}
     best, best_state = None, None
     n = len(Z)
     for epoch in range(epochs):
@@ -60,11 +64,16 @@ def continue_train_classifier(probe, Xtr, ytr, Xval, yval, lr, epochs, batch, se
             tot += loss.item() * len(idx)
         clf.eval()
         with torch.no_grad():
+            tr_logits = clf(Z)                  # post-epoch full-train metrics (as fit_joint)
+            tr_ce = F.cross_entropy(tr_logits, y).item()
+            tr_acc = (tr_logits.argmax(-1) == y).float().mean().item()
             logits = clf(Xv)
             val_ce = F.cross_entropy(logits, yv).item()
             val_acc = (logits.argmax(-1) == yv).float().mean().item()
         hist["epoch"].append(epoch)
         hist["train_ce"].append(tot / n)
+        hist["train_pipeline_ce"].append(tr_ce)
+        hist["train_pipeline_acc"].append(tr_acc)
         hist["val_ce"].append(val_ce)
         hist["val_acc"].append(val_acc)
         better = best is None or val_acc > best["val_acc"] or \
@@ -98,6 +107,11 @@ def main():
 
             fm = Stage3FM(probe, dim, seed=s3["fm_init_seed"])
             fm.fit_joint(Xtr[idx], ytr[idx], Xval, yval, clf_lr)
+            fm.save(mdir / f"{ds}_{enc}_fm_joint_{k}_seed{seed}.pt")
+            torch.save({"state_dict": {n_: p_.cpu() for n_, p_ in
+                                       fm.classifier.state_dict().items()},
+                        "dim": dim, "n_classes": fm.classifier.out_features, "seed": seed},
+                       mdir / f"{ds}_{enc}_joint_clf_{k}_seed{seed}.pt")
             with open(artifacts_dir("curves_stage3") /
                       f"{ds}_{enc}_joint_seed{seed}.json", "w") as fp:
                 json.dump(fm.history, fp)
@@ -107,6 +121,9 @@ def main():
             ctrl, ctrl_best, ctrl_hist = continue_train_classifier(
                 probe, Xtr[idx], ytr[idx], Xval, yval, clf_lr, tr["epochs"],
                 tr["batch_size"], s3["fm_init_seed"])
+            torch.save({"state_dict": {n_: p_.cpu() for n_, p_ in ctrl.state_dict().items()},
+                        "dim": dim, "n_classes": ctrl.out_features, "seed": seed},
+                       mdir / f"{ds}_{enc}_clf_only_{k}_seed{seed}.pt")
             with open(artifacts_dir("curves_stage3") /
                       f"{ds}_{enc}_clf_only_seed{seed}.json", "w") as fp:
                 json.dump(ctrl_hist, fp)
