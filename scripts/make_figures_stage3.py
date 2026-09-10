@@ -32,7 +32,8 @@ from src.embeddings import load_features
 from src.evaluation import artifacts_dir
 from src.stage3 import load_pinned_probe, load_stage3_fm
 from src.utils import load_config
-from src.visualize import (_save, dataset_label, encoder_label, feature_projection)
+from src.visualize import (_save, dataset_label, encoder_label, feature_overlay,
+                           feature_projection)
 
 S1_COLOR, S2_COLOR = "#0173B2", "#D55E00"
 REP_SEED = 0
@@ -147,6 +148,16 @@ def feature_charts():
             f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: features "
             f"before and after the Stage-3 FM (joint PCA, seed 0)",
             f"stage3_features_{ds}_{enc}.png", axis_labels=pc_labels(pca)))
+        # Same joint fit, overlaid: original (faded) -> transported (solid), per strategy.
+        print("figure:", feature_overlay(
+            [{"title": "Strategy 1: original z (faded) → ẑ (solid)", "xy_before": xy0,
+              "xy_after": xy1, "labels": y},
+             {"title": "Strategy 2: original z (faded) → ẑ (solid)", "xy_before": xy0,
+              "xy_after": xy2, "labels": y}],
+            [names_all[c] for c in classes],
+            f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: before/after overlay "
+            f"in the same joint-PCA plane (seed 0)",
+            f"stage3_features_overlay_{ds}_{enc}.png", axis_labels=pc_labels(pca)))
 
 
 # --------------------------------------------------------------------------- #
@@ -391,6 +402,15 @@ def joint_feature_charts():
             f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: features before "
             f"and after the optional joint extension (joint PCA, seed 0)",
             f"stage3_features_joint_{ds}_{enc}.png", axis_labels=pc_labels(pca)))
+        print("figure:", feature_overlay(
+            [{"title": "Strategy 2 (frozen classifier): z (faded) → ẑ (solid)",
+              "xy_before": xy0, "xy_after": xy1, "labels": y},
+             {"title": "Joint FM + classifier fine-tuning: z (faded) → ẑ (solid)",
+              "xy_before": xy0, "xy_after": xy2, "labels": y}],
+            [names_all[c] for c in classes],
+            f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: before/after overlay "
+            f"of the optional extension in the same joint-PCA plane (seed 0)",
+            f"stage3_features_joint_overlay_{ds}_{enc}.png", axis_labels=pc_labels(pca)))
 
 
 def main():

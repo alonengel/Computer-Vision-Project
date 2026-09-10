@@ -248,6 +248,14 @@ Per the user-supplied implementation prompt: the spec's optional "explore the le
 
 **Observation recorded in §6:** with the classifier unfrozen the joint objective runs away — validation CE climbs monotonically (≈4.6 on FGVC / ≈7 on DTD at epoch 200, seed 0), validation accuracy drifts down (≈51.5% / ≈42.6%), and the mean displacement grows from 5.6 / 1.3 feature units at the checkpoint to ≈67 / ≈48 by epoch 200 (all seeds 63–74 / 48–53; feature norms ≈50 / ≈24) — so validation selects epochs 0–18. The control drifts slowly (val CE ≈2.3→2.6 / ≈1.8→1.95) and checkpoints late on FGVC (171–197). At the checkpoint the joint FM moves features about as little as S2 (5.6 vs 4.7 on FGVC; 1.3 vs 2.3 on DTD), so the joint-PCA panels are hard to tell apart. Notebook rebuilt via `build_notebook.py 3` + nbconvert (0 errors); `repro_check` green. The report (`REPORT_STAGE3.md`) was not changed.
 
+## 2026-09-10 — Feature-space figures: before/after overlay added wherever a feature-space figure appears (user request)
+
+**Request (user):** next to every feature-space visualization, add a combined before/after view — the original features drawn more transparently, the transported features in regular colours.
+
+**Implementation:** new `feature_overlay()` in `src/visualize.py` (same palette, markers and *joint* projection as `feature_projection`, so the overlay shares the plane of the side-by-side figure next to it): original $z$ at alpha 0.22, transported $\hat z$ solid, and a thin grey `LineCollection` segment joining each test example to its transported position; three extra legend entries explain the encoding. Called from `feature_charts()` and `joint_feature_charts()` in `scripts/make_figures_stage3.py` → `stage3_features_overlay_{ds}_{enc}.png` (§5: one panel per mandatory strategy) and `stage3_features_joint_overlay_{ds}_{enc}.png` (§6: Strategy 2 vs the joint extension). Re-running the `features` / `joint_features` steps reproduced the existing side-by-side PNGs byte-identically (git shows no change), so the plane is exactly the one already displayed. `nb3_sections/s5_features.py` and `s6_discussion.py` display the overlays directly after the corresponding side-by-side figure.
+
+**What the overlays show (recorded in the notebook, qualitative only):** for the mandatory strategies most segments are shorter than the marker and the visible ones are short and not class-coherent — consistent with §5's reading that the useful movement lies mostly outside the plane. For the joint extension the visible movement is class-coherent for a few classes (FGVC-Aircraft: DHC-1 and Cessna 172 shift together; DTD: knitted and bubbly) while the rest barely move — a difference in kind from the frozen-classifier strategies, consistent with a trainable boundary under a pure CE objective. Notebook rebuilt (33 cells, 0 errors); `repro_check` green.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*

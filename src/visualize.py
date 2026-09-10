@@ -247,6 +247,53 @@ def feature_projection(panels, class_names, title, name, axis_labels=None):
     return _save(fig, name)
 
 
+def feature_overlay(panels, class_names, title, name, axis_labels=None):
+    """Before/after overlay in ONE plane per method: the original features drawn
+    faded, the transported features in full colour, and a thin grey segment
+    joining each example to its transported position.
+
+    panels: list of dicts with 'title', 'xy_before' [N,2], 'xy_after' [N,2],
+    'labels' [N]. The caller passes projections of the SAME joint fit used for
+    the side-by-side `feature_projection` figure, so both figures share a plane;
+    palette and markers are shared too (class identity never rests on hue alone).
+    """
+    from matplotlib.collections import LineCollection
+    from matplotlib.lines import Line2D
+
+    palette = class_palette(len(class_names))
+    markers = ["o", "s", "^", "D", "v", "P", "X", "<", ">", "*"]
+    fig, axes = plt.subplots(1, len(panels), figsize=(6.6 * len(panels), 6.2), squeeze=False)
+    for ax, p in zip(axes[0], panels):
+        labels = np.asarray(p["labels"])
+        before, after = np.asarray(p["xy_before"]), np.asarray(p["xy_after"])
+        ax.add_collection(LineCollection(np.stack([before, after], axis=1), colors="0.45",
+                                         linewidths=0.6, alpha=0.35, zorder=1))
+        for j, c in enumerate(sorted(np.unique(labels))):
+            m = labels == c
+            ax.scatter(before[m, 0], before[m, 1], s=16, alpha=0.22, color=palette[j],
+                       marker=markers[j % len(markers)], zorder=2)
+            ax.scatter(after[m, 0], after[m, 1], s=24, alpha=0.9, color=palette[j],
+                       marker=markers[j % len(markers)], label=class_names[j], zorder=3)
+        ax.autoscale_view()
+        ax.set_title(p["title"], fontsize=12)
+        ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+        if axis_labels:
+            ax.set_xlabel(axis_labels[0], fontsize=10)
+            ax.set_ylabel(axis_labels[1], fontsize=10)
+    handles, labels_ = axes[0][0].get_legend_handles_labels()
+    handles += [Line2D([], [], linestyle="", marker="o", color="0.4", alpha=0.3,
+                       markersize=7, label="original z (faded)"),
+                Line2D([], [], linestyle="", marker="o", color="0.4", markersize=8,
+                       label="transported ẑ (solid)"),
+                Line2D([], [], color="0.45", lw=1.2, alpha=0.7, label="displacement z → ẑ")]
+    labels_ += ["original z (faded)", "transported ẑ (solid)", "displacement z → ẑ"]
+    fig.legend(handles, labels_, loc="upper center", bbox_to_anchor=(0.5, 0.0),
+               ncol=min(7, len(labels_)), fontsize=10, frameon=True, markerscale=1.6)
+    fig.suptitle(title, y=1.02, fontsize=13.5)
+    fig.tight_layout()
+    return _save(fig, name)
+
+
 # --------------------------------------------------------------------------- #
 # Stage 2 — FM vs baseline accuracy, FM training curves, flow trajectories
 # --------------------------------------------------------------------------- #

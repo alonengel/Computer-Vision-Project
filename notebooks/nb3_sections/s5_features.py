@@ -12,4 +12,13 @@ for ds, enc in cfg["stage3"]["settings"]:
     if p.exists():
         display(Image(str(p), width=980))
 """),
+    ("markdown", """
+**Overlay view — before and after in the same plane.** The identical joint-PCA projection, one panel per strategy: the original features $z$ drawn faded, the transported features $\\hat{z}$ in full colour, and a thin grey segment joining each test example to its transported position. Most segments are shorter than the marker — the transported point sits on top of its original — and the visible ones are short and not class-coherent: no class shifts as a block. Consistent with the reading above, the movement that matters lies largely outside this plane.
+"""),
+    ("code", """
+for ds, enc in cfg["stage3"]["settings"]:
+    p = REPO / "results" / "figures" / f"stage3_features_overlay_{ds}_{enc}.png"
+    if p.exists():
+        display(Image(str(p), width=980))
+"""),
 ]

@@ -43,6 +43,15 @@ for ds, enc in cfg["stage3"]["settings"]:
         display(Image(str(p), width=980))
 """),
     ("markdown", """
+**Overlay view of the extension.** Same construction as §5's overlay — original $z$ faded, transported $\\hat{z}$ solid, thin grey segments = per-example displacements — in the extension's joint-PCA plane. A difference in kind appears: the jointly trained FM's visible movement is *class-coherent* for a few classes (on FGVC-Aircraft the DHC-1 and Cessna 172 examples shift together in one direction; on DTD the knitted and bubbly examples do) while the remaining classes barely move, whereas Strategy 2's segments stay short and directionally mixed. That is what one expects when the classifier boundary is itself trainable and CE is the only signal — whole classes get pushed rather than individual points nudged — but it is a qualitative observation only.
+"""),
+    ("code", """
+for ds, enc in cfg["stage3"]["settings"]:
+    p = REPO / "results" / "figures" / f"stage3_features_joint_overlay_{ds}_{enc}.png"
+    if p.exists():
+        display(Image(str(p), width=980))
+"""),
+    ("markdown", """
 ### Limitations
 
 - **$n = 3$ subset seeds**; spreads are sample standard deviations; no significance claims. The spread measures subset-sampling variability only (probe-init and FM-init are fixed).
