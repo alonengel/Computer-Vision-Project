@@ -10,15 +10,6 @@ for ds, enc in cfg["stage3"]["settings"]:
     if p.exists():
         display(Image(str(p), width=980))
 """),
-    ("markdown", """
-**Strategy-internal diagnostics — separate axes, deliberately.** These quantities measure different things and are never drawn on a shared axis: Strategy 1's relative displacement penalty; Strategy 2's FM-regression loss; Strategy 2's target construction (CE of the unprojected snapshot output — diagnostic only; CE at the projected $u_0$; CE at the selected target) with the **trust-region hit rate** (fraction of samples whose target sits on the boundary $\\lVert\\hat{z}' - z\\rVert = \\rho$) on the twin axis; and the mean displacements. Note the S2 phase-1 values describe the *pre-update* snapshot of each epoch, while its validation values describe the post-update model — a one-phase offset inherent to the two-phase scheme.
-"""),
-    ("code", """
-for ds, enc in cfg["stage3"]["settings"]:
-    p = REPO / "results" / "figures" / f"stage3_diag_{ds}_{enc}.png"
-    if p.exists():
-        display(Image(str(p), width=1150))
-"""),
     ("code", """
 import json as _json
 

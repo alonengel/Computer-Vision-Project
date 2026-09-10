@@ -32,7 +32,7 @@ display(Markdown((REPO / "results" / "metrics" / "stage3_joint_table.md")
 - **One K, one T, one encoder per dataset** — by the spec's own scoping ("to keep this stage focused"); conclusions are about this operating point.
 - **The λ-ablation pair can degenerate**: where λ = 0 wins the sweep, the with/without-regularization contrast is absent from the test table by construction (stated in ADR 0008 §7).
 - **2-D projections are qualitative**; the joint-PCA plane explains 15.6% (DTD) / 33.0% (FGVC) of the variance only.
-- **The Strategy-2 trust region was active for nearly all targets after the early epochs** (hit rate ≈100%, §4 diagnostics). Consequently, performance may depend materially on the fixed choice α = 0.1; no α ablation was performed (future work, or a clearly-labelled validation-only exploration).
+- **The Strategy-2 trust region was active for nearly all targets after the early epochs** (hit rate ≈100% in the per-epoch training histories, `results/artifacts/curves_stage3/*.json`, drawn in `results/figures/stage3_diag_*.png`). Consequently, performance may depend materially on the fixed choice α = 0.1; no α ablation was performed (future work, or a clearly-labelled validation-only exploration).
 - Although the linear classifier is frozen, **the FM adds nonlinear capacity** by warping feature space — $W F_\\theta(z) + b$ can represent nonlinear decision boundaries even with $W, b$ fixed. The conclusions are therefore limited to the chosen FM architecture, K = 10, T = 4, and the fixed trust-region radius — not to "what a frozen classifier can do" in general.
 
 ### Deviations from, and extensions beyond, the specification

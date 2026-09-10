@@ -232,6 +232,12 @@ Per the user-supplied implementation prompt: the spec's optional "explore the le
 
 **Decision (user):** the repository's Stage-3 deliverable is the single scientific notebook `stage3_presentation.ipynb`, as in the earlier stages. The presentation-focused companions built on 2026-09-09 — `stage3_presentation_talk.ipynb` (v1, collapsed Hebrew speaker notes inside), `stage3_presentation_talk_v2.ipynb` (English-only, 13 sections + appendix) with its private notes `stage3_speaker_notes_he_v2.md`, their section directories `nb3_talk_sections/` and `nb3_talk_v2_sections/`, and the `build_talk_notebook.py` builder — are removed from `main`'s tree in a normal commit (`git rm`; README lines reverted). Per the user's instruction the git history is **not** rewritten: the two talk commits (`b1c2e9a`, `71d0549`) stay in `main`'s history, and the complete state is additionally preserved as tag `backup/stage3-talk-notebooks-20260910` and branch `archive/stage3-talk-notebooks` (both pushed). Nothing scientific changed — same `results/`, `src/`, `scripts/` and tables; `repro_check` green. To retrieve the talk notebooks later: `git checkout archive/stage3-talk-notebooks -- notebooks/`.
 
+## 2026-09-10 — Scientific notebook: strategy-internal diagnostics figure removed from §4 (user request)
+
+**Request (user, after the reviewer round):** drop the "Strategy-internal diagnostics — separate axes, deliberately" block (the 2 × 2 figure `stage3_diag_*.png` with its explanatory paragraph) from `stage3_presentation.ipynb`.
+
+**Change:** `notebooks/nb3_sections/s4_behaviour.py` no longer contains the diagnostics paragraph and the figure cell; §4 keeps the comparable end-to-end curves (both strategies, shared axes) and the checkpoint-placement / displacement table. The one cross-reference to the removed block — the trust-region limitation in §6 ("hit rate ≈100%, §4 diagnostics") — now cites the artifacts directly (`results/artifacts/curves_stage3/*.json`, drawn in `results/figures/stage3_diag_*.png`). The diagnostics figures themselves and the `diag` step of `scripts/make_figures_stage3.py` remain as artifacts of record (the report still describes them); only the notebook display changed. Notebook rebuilt via `build_notebook.py 3` + nbconvert (24 cells, 0 errors); `repro_check` green.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*
