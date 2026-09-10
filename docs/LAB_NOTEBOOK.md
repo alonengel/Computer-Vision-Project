@@ -268,6 +268,10 @@ Per the user-supplied implementation prompt: the spec's optional "explore the le
 
 **Gotcha:** `make_tables_stage3.py` prints each table after writing it; under the agent's console (cp1252) the `Δ` glyph raised `UnicodeEncodeError` after the first table, leaving the other three files stale (caught by `repro_check`: 2 content mismatches). Re-run with `PYTHONIOENCODING=utf-8`; `tasks.ps1 tables3` from PowerShell is unaffected.
 
+## 2026-09-10 — Checkpoint chart: relative-displacement variant tried and reverted on the user's request
+
+**What happened.** Asked whether the checkpoint chart's displacement ‖ẑ−z‖ should be divided by ‖z‖, the assessment was yes (the mean feature norm differs ≈2× between the encoders, ≈23.6 on DTD/ResNet-18 vs ≈49.7 on FGVC/DINOv2, and the relative quantity is the one both methods are defined in: the Rolled regularizer penalizes ‖ẑ−z‖²/‖z‖², the Guided trust region is 10% of ‖z‖). Commit `93be0a6` implemented it — per-sample mean of ‖ẑ−z‖/‖z‖ recomputed from the checkpointed models (Guided ≈9–10% on both datasets, at its cap; Rolled ≈11–15% on DTD, ≈2.3–2.5% on FGVC), absolute units in parentheses, the 10% radius as a dashed reference, and the matching sentences in §4–§6 and the report updated. The user preferred the original presentation, so `bb54559` reverts that commit (inverse commit, history kept): the chart, the notebook sections, the executed notebook, the figure script and the report are byte-identical to commit `820a5fa` again — the right-hand panels show the absolute mean ‖ẑ−z‖ in feature units. The relative numbers above remain valid and are recorded here for reference only.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*
