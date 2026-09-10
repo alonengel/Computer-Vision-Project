@@ -6,9 +6,10 @@ quantities (S1 displacement penalty, S2 FM-regression loss, S2 target CE
 before/after, displacements, trust-region hit rate) are drawn on separate
 axes — they measure different things. Feature viz: one PCA fitted jointly on
 [z, z_hat_S1, z_hat_S2] in RAW space, the shared viz_selection classes and
-class colours, representative seed 0.
+class colours, representative seed 0. Sweep chart: the seed-0 validation sweep
+as one panel per (dataset, strategy), replacing the sweep table in the notebook.
 
-Usage: python scripts/make_figures_stage3.py [curves|diag|features]
+Usage: python scripts/make_figures_stage3.py [curves|diag|features|sweep]
 """
 import json
 import sys
@@ -19,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from make_figures import viz_selection
 from make_figures_stage2 import _joint_pca, pc_labels
@@ -143,9 +145,104 @@ def feature_charts():
             f"stage3_features_{ds}_{enc}.png", axis_labels=pc_labels(pca)))
 
 
+# --------------------------------------------------------------------------- #
+# Seed-0 validation sweep as a chart (replaces the sweep table in the notebook)
+# --------------------------------------------------------------------------- #
+PARAM_SYMBOL = {"lam": "λ", "beta": "β", "m": "m"}
+
+
+def _config_label(param, sep="\n"):
+    """'lam=1' -> 'λ = 1'; 'beta=0.25,m=3' -> 'β = 0.25<sep>m = 3'."""
+    return sep.join(f"{PARAM_SYMBOL[k]} = {v}" for k, v in (kv.split("=") for kv in param.split(",")))
+
+
+def _selected_param(rows):
+    """Pre-registered selection rule (ADR 0008 §7): highest validation accuracy,
+    ties -> lowest validation CE -> grid order (= file order)."""
+    best = None
+    for _, r in rows.iterrows():
+        key = (round(float(r["val_acc"]), 12), -round(float(r["val_ce"]), 12))
+        if best is None or key > best[0]:
+            best = (key, r["param"])
+    return best[1]
+
+
+def sweep_chart():
+    """Selection transparency as a figure: one panel per (dataset, strategy) —
+    seed-0 validation top-1 of every swept configuration (markers), the
+    validation-selected configuration as a starred marker, the checkpoint epoch
+    under each configuration, and the pinned probe's seed-0 validation accuracy
+    (= the pipeline at its identity initialization) as a dashed reference.
+    Reads stage3_sweep.csv / runs_stage3.csv only; the table of record remains
+    stage3_sweep_table.md."""
+    from src.evaluation import metrics_dir
+
+    cfg = load_config()
+    sw = pd.read_csv(metrics_dir() / "stage3_sweep.csv")
+    r3 = pd.read_csv(metrics_dir() / "runs_stage3.csv")
+    settings = cfg["stage3"]["settings"]
+    strategies = (("s1", S1_COLOR, "Strategy 1 — rolled-out CE"),
+                  ("s2", S2_COLOR, "Strategy 2 — classifier-guided targets"))
+    fig, axes = plt.subplots(len(settings), 2, figsize=(14.5, 4.9 * len(settings)),
+                             squeeze=False)
+    for i, (ds, enc) in enumerate(settings):
+        probe = r3[(r3["dataset"] == ds) & (r3["encoder"] == enc)
+                   & (r3["head"] == "pinned_probe") & (r3["seed"] == 0)].iloc[0]
+        base = 100 * float(probe["val_acc"])
+        for j, (strat, color, name) in enumerate(strategies):
+            ax = axes[i][j]
+            rows = sw[(sw["dataset"] == ds) & (sw["encoder"] == enc)
+                      & (sw["strategy"] == strat)].reset_index(drop=True)
+            assert (rows["status"] == "ok").all() and (rows["fallback"] == 0).all()
+            sel = _selected_param(rows)
+            # The configuration of record used for the three-seed test runs must
+            # be the one the rule selects (same check as the repro check).
+            rec = r3[(r3["dataset"] == ds) & (r3["encoder"] == enc)
+                     & (r3["head"] == f"fm_{strat}") & (r3["seed"] == 0)].iloc[0]
+            rec_param = (f"lam={int(rec['lam'])}" if strat == "s1"
+                         else f"beta={rec['beta']},m={int(rec['m'])}")
+            assert sel == rec_param, (ds, strat, sel, rec_param)
+
+            accs = 100 * rows["val_acc"].to_numpy()
+            x = np.arange(len(rows))
+            lo, hi = min(accs.min(), base), max(accs.max(), base)
+            pad = max(0.5, 0.22 * (hi - lo))
+            ax.axhline(base, color="#555555", ls="--", lw=1.4, zorder=1)
+            ax.text(-0.5, base - 0.06 * pad,
+                    f"pinned probe (identity FM): {base:.2f}", ha="left", va="top",
+                    fontsize=9.5, color="#555555")
+            for k, (acc, param, ep) in enumerate(zip(accs, rows["param"], rows["checkpoint_epoch"])):
+                is_sel = param == sel
+                ax.scatter([k], [acc], s=(420 if is_sel else 130), color=color,
+                           marker=("*" if is_sel else "o"),
+                           edgecolors="black" if is_sel else "none", linewidths=1.3,
+                           zorder=3, alpha=1.0 if is_sel else 0.75)
+                ax.text(k, acc + 0.22 * pad, f"{acc:.2f}", ha="center", va="bottom",
+                        fontsize=10.5, fontweight="bold" if is_sel else "normal")
+            ax.set_xticks(x)
+            ax.set_xticklabels([f"{_config_label(p)}\nep {e}"
+                                for p, e in zip(rows["param"], rows["checkpoint_epoch"])],
+                               fontsize=10)
+            ax.set_xlim(-0.6, len(rows) - 0.4)
+            ax.set_ylim(lo - 0.9 * pad, hi + 1.3 * pad)
+            ax.set_ylabel("seed-0 validation top-1 (%)", fontsize=11)
+            ties = int(np.isclose(rows["val_acc"], rows["val_acc"].max()).sum())
+            tie_note = "  (tie on accuracy → lower validation CE)" if ties > 1 else ""
+            ax.set_title(f"{dataset_label(ds)} — {encoder_label(enc, short=True)} · {name}\n"
+                         f"selected: {_config_label(sel, sep=', ')}{tie_note}",
+                         fontsize=11.5)
+            ax.tick_params(axis="y", labelsize=10)
+    fig.suptitle("Seed-0 validation sweep — every configuration the winners were chosen from "
+                 "(star = validation-selected; ep = checkpoint epoch; y-axes zoomed to each "
+                 "sweep; all runs completed at fallback level 0)", fontsize=12.5, y=1.0)
+    fig.tight_layout()
+    print("figure:", _save(fig, "stage3_sweep.png"))
+
+
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
-    steps = {"curves": curve_charts, "diag": diag_charts, "features": feature_charts}
+    steps = {"curves": curve_charts, "diag": diag_charts, "features": feature_charts,
+             "sweep": sweep_chart}
     for name, fn in steps.items():
         if only and name != only:
             continue

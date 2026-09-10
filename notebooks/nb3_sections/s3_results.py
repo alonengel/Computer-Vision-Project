@@ -20,11 +20,10 @@ display(Markdown((REPO / "results" / "metrics" / "stage3_lambda_ablation_table.m
     ("markdown", """
 ### 3.3 Selection transparency — the full seed-0 validation sweep
 
-Everything the winners were chosen from, so the selection involves no undisclosed freedom. Test was untouched during selection.
+Everything the winners were chosen from, so the selection involves no undisclosed freedom. Test was untouched during selection. One panel per (dataset, strategy) — the two strategies are never mixed on one axis: markers are the seed-0 **validation** top-1 of every swept configuration, ★ the validation-selected winner (highest validation accuracy; ties → lowest validation CE → grid order), "ep" the checkpoint epoch of that run, and the dashed line the pinned probe's seed-0 validation accuracy — the pipeline at its identity initialization. Every run completed at fallback level 0 (the default recipe). The generated table of record behind the figure is `results/metrics/stage3_sweep_table.md`.
 """),
     ("code", """
-display(Markdown((REPO / "results" / "metrics" / "stage3_sweep_table.md")
-                 .read_text(encoding="utf-8")))
+display(Image(str(REPO / "results" / "figures" / "stage3_sweep.png"), width=1150))
 """),
     ("code", """
 from src.visualize import dataset_label, encoder_label
