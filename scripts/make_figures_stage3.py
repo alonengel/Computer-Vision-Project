@@ -8,8 +8,8 @@ axes — they measure different things. Feature viz: one PCA fitted jointly on
 [z, z_hat_S1, z_hat_S2] in RAW space, the shared viz_selection classes and
 class colours, representative seed 0. Sweep chart: the seed-0 validation sweep
 as one panel per (dataset, strategy), replacing the sweep table in the notebook.
-Checkpoint chart: placement + displacement of the final models (replaces the
-notebook table). Optional extension: joint-vs-control curves and a joint-PCA
+Checkpoint chart: placement + relative displacement of the final models
+(replaces the notebook table). Optional extension: joint-vs-control curves and a joint-PCA
 feature figure (needs the models checkpointed by run_stage3_joint.py).
 
 Usage: python scripts/make_figures_stage3.py
@@ -259,44 +259,69 @@ def sweep_chart():
 # --------------------------------------------------------------------------- #
 def checkpoint_chart():
     """One row per dataset: (left) validation-selected checkpoint epoch per subset
-    seed, annotated with the best validation top-1; (right) mean ‖ẑ−z‖ at that
-    checkpoint — grouped bars, Rolled vs Guided strategy. Checkpoint epochs come
-    from runs_stage3.csv (the table of record, full tie-break rule); the
-    displacement is read from the training history at that epoch."""
+    seed, annotated with the best validation top-1; (right) the RELATIVE
+    displacement of that checkpointed model on its training subset — the
+    per-sample mean of ‖ẑ−z‖ / ‖z‖ in % (label: % and, in parentheses, the
+    absolute mean ‖ẑ−z‖ in feature units) — grouped bars, Rolled vs Guided
+    strategy, with the Guided trust-region radius (alpha · ‖z‖) as a dashed
+    reference. Relative units make the two encoders comparable (mean feature
+    norms ≈24 vs ≈50) and are the quantity both methods are defined in.
+    Checkpoint epochs come from runs_stage3.csv (the table of record, full
+    tie-break rule); displacements are recomputed from the checkpointed models
+    and asserted to agree with the training-history value within 0.1 units."""
+    from src.data import training_indices
     from src.evaluation import metrics_dir
 
     cfg = load_config()
+    s3 = cfg["stage3"]
     r3 = pd.read_csv(metrics_dir() / "runs_stage3.csv")
-    settings, seeds = cfg["stage3"]["settings"], cfg["stage3"]["subset_seeds"]
-    n_epochs = cfg["stage3"]["training"]["epochs"]
+    settings, seeds = s3["settings"], s3["subset_seeds"]
+    n_epochs = s3["training"]["epochs"]
+    alpha = s3["strategy2"]["alpha_trust_region"]
+    mdir = artifacts_dir("stage3_models")
     heads = (("fm_s1", S1_COLOR, "Rolled strategy"), ("fm_s2", S2_COLOR, "Guided strategy"))
     width = 0.36
     fig, axes = plt.subplots(len(settings), 2, figsize=(14.5, 4.7 * len(settings)),
                              squeeze=False)
     for i, (ds, enc) in enumerate(settings):
         ax_ep, ax_disp = axes[i]
-        disp_max = 0.0
+        f = load_features(ds, "train", enc)
+        Xtr, ytr = f["features"], f["labels"].numpy()
+        rel_max = 0.0
         for j, (head, color, name) in enumerate(heads):
-            eps, disps, accs = [], [], []
+            eps, rels, absd, accs = [], [], [], []
             for seed in seeds:
                 row = r3[(r3["dataset"] == ds) & (r3["encoder"] == enc)
                          & (r3["head"] == head) & (r3["seed"] == seed)].iloc[0]
                 h = curve(ds, enc, head, seed)
                 ep = int(row["checkpoint_epoch"])
                 assert h["epoch"][ep] == ep
+                idx = training_indices(ds, s3["k_shot"], seed, ytr,
+                                       fingerprint=f.get("pool_fingerprint"))
+                X = Xtr[idx].float()
+                probe = load_pinned_probe(mdir / f"probe_{ds}_{enc}_{k_label()}_seed{seed}.pt")
+                fm = load_stage3_fm(mdir / f"{ds}_{enc}_{head}_{k_label()}_seed{seed}.pt", probe)
+                d = (fm.transport(X) - X).norm(dim=-1)
+                n = X.norm(dim=-1)
+                # The checkpointed model must reproduce the history's displacement.
+                assert abs(d.mean().item() - h["mean_disp"][ep]) < 0.1, (ds, head, seed)
                 eps.append(ep)
-                disps.append(h["mean_disp"][ep])
+                rels.append(100 * (d / n).mean().item())
+                absd.append(d.mean().item())
                 accs.append(100 * max(h["val_acc"]))
             x = np.arange(len(seeds)) + (j - 0.5) * width
             ax_ep.bar(x, eps, width, color=color, label=name)
-            ax_disp.bar(x, disps, width, color=color, label=name)
+            ax_disp.bar(x, rels, width, color=color, label=name)
             for xb, ep, acc in zip(x, eps, accs):
                 ax_ep.text(xb, ep + 0.015 * n_epochs, f"ep {ep}\n{acc:.2f}%",
                            ha="center", va="bottom", fontsize=9.5)
-            for xb, d in zip(x, disps):
-                ax_disp.text(xb, d * 1.02, f"{d:.2f}", ha="center", va="bottom",
-                             fontsize=9.5)
-            disp_max = max(disp_max, max(disps))
+            for xb, r, a in zip(x, rels, absd):
+                ax_disp.text(xb, r * 1.02, f"{r:.1f}%\n({a:.2f})", ha="center",
+                             va="bottom", fontsize=9.5,
+                             bbox=dict(facecolor="white", edgecolor="none", alpha=0.75, pad=0.3))
+            rel_max = max(rel_max, max(rels))
+        ax_disp.axhline(100 * alpha, color="0.35", ls="--", lw=1.4, zorder=1,
+                        label=f"Guided trust-region radius ({100 * alpha:.0f}% of ‖z‖)")
         for ax in (ax_ep, ax_disp):
             ax.set_xticks(range(len(seeds)))
             ax.set_xticklabels([f"subset seed {s}" for s in seeds], fontsize=10.5)
@@ -307,13 +332,14 @@ def checkpoint_chart():
         ax_ep.set_title(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: "
                         f"validation-selected checkpoint\n(label: epoch · best validation top-1)",
                         fontsize=11.5)
-        ax_disp.set_ylim(0, disp_max * 1.3)
-        ax_disp.set_ylabel("mean ‖ẑ−z‖ at the checkpoint (feature units)", fontsize=11)
+        ax_disp.set_ylim(0, max(rel_max, 100 * alpha) * 1.6)
+        ax_disp.set_ylabel("mean ‖ẑ−z‖ / ‖z‖ at the checkpoint (%)", fontsize=11)
         ax_disp.set_title(f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: "
-                          f"displacement of the checkpointed model\n(training set)",
+                          f"relative displacement of the checkpointed model\n"
+                          f"(training subset; label: % of feature norm · absolute units)",
                           fontsize=11.5)
-    fig.suptitle("Checkpoint placement and displacement of the two mandatory strategies' "
-                 "final models, all subset seeds", fontsize=12.5, y=1.0)
+    fig.suptitle("Checkpoint placement and relative displacement of the two mandatory "
+                 "strategies' final models, all subset seeds", fontsize=12.5, y=1.0)
     fig.tight_layout()
     print("figure:", _save(fig, "stage3_checkpoints.png"))
 
