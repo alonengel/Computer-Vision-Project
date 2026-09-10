@@ -18,9 +18,12 @@ from src.utils import load_config
 from src.visualize import dataset_label, encoder_label
 
 HEAD_LABELS = {"pinned_probe": "Pinned Stage-1 probe (baseline)",
-               "fm_s1": "Strategy 1 — rolled-out CE training",
-               "fm_s1_lambda0": "Strategy 1, λ = 0 (no displacement penalty)",
-               "fm_s2": "Strategy 2 — classifier-guided targets"}
+               "fm_s1": "Rolled strategy — end-to-end rolled-out CE training",
+               "fm_s1_lambda0": "Rolled strategy, λ = 0 (no displacement penalty)",
+               "fm_s2": "Guided strategy — classifier-guided targets"}
+# Display names of the two mandatory methods: the Rolled strategy is the
+# specification's Strategy 1, the Guided strategy its Strategy 2.
+STRATEGY_NAMES = {"s1": "Rolled", "s2": "Guided"}
 
 
 def head_params(runs, ds, enc, head):
@@ -89,7 +92,7 @@ def main_table():
 
 
 def ablation_table():
-    """S1 winner vs the pre-registered λ = 0 pair (with/without regularization)."""
+    """Rolled-strategy winner vs the pre-registered λ = 0 pair (with/without regularization)."""
     cfg = load_config()
     runs = pd.read_csv(metrics_dir() / "runs_stage3.csv")
     s = pd.read_csv(metrics_dir() / "summary_stage3.csv")
@@ -137,10 +140,10 @@ def sweep_table():
              "|---|---|---|---|---|---|"]
     for _, r in sw.iterrows():
         if r.get("status") == "failed":
-            lines.append(f"| {dataset_label(r['dataset'])} | {r['strategy'].upper()} "
+            lines.append(f"| {dataset_label(r['dataset'])} | {STRATEGY_NAMES.get(r['strategy'], r['strategy'].upper())} "
                          f"| {r['param']} | failed | — | — |")
             continue
-        lines.append(f"| {dataset_label(r['dataset'])} | {r['strategy'].upper()} "
+        lines.append(f"| {dataset_label(r['dataset'])} | {STRATEGY_NAMES.get(r['strategy'], r['strategy'].upper())} "
                      f"| {r['param']} | {100 * r['val_acc']:.2f} "
                      f"| {int(r['checkpoint_epoch'])} | {int(r['fallback'])} |")
     lines.append("")
@@ -161,7 +164,7 @@ def joint_table():
     sj = pd.read_csv(metrics_dir() / "summary_stage3_joint.csv")
     labels = {"fm_joint": "Joint FM + classifier fine-tuning",
               "clf_only_continued": "Control: classifier-only continued training",
-              "fm_s2": "(reference) Strategy 2, frozen classifier"}
+              "fm_s2": "(reference) Guided strategy, frozen classifier"}
     lines = ["| Dataset / encoder | Variant | Top-1 (%) | Δ vs pinned probe (pts) |",
              "|---|---|---|---|"]
     for ds, enc in cfg["stage3"]["settings"]:

@@ -2,7 +2,7 @@ CELLS = [
     ("markdown", """
 ## 4 · Training behaviour
 
-**Comparable end-to-end metrics on shared axes** (the spec's required training + validation curves, both methods): the full-pipeline cross-entropy and top-1 accuracy of $z \\to \\mathrm{FM} \\to$ frozen probe, on train and validation, every epoch. Representative run: subset seed 0 (the validation-selected winners). Dashed = train, solid = validation; blue = Strategy 1, orange = Strategy 2.
+**Comparable end-to-end metrics on shared axes** (the spec's required training + validation curves, both methods): the full-pipeline cross-entropy and top-1 accuracy of $z \\to \\mathrm{FM} \\to$ frozen probe, on train and validation, every epoch. Representative run: subset seed 0 (the validation-selected winners). Dashed = train, solid = validation; blue = Rolled strategy, orange = Guided strategy.
 """),
     ("code", """
 for ds, enc in cfg["stage3"]["settings"]:

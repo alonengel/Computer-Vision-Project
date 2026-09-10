@@ -1,6 +1,8 @@
 # ADR 0008 — Stage 3 design decisions, fixed a priori
 
 **Status:** accepted (2026-08-24), before any Stage-3 training run.
+
+> **Naming note (added 2026-09-10, no other change):** in the notebook, figures, tables and report the two mandatory methods are called the **Rolled strategy** (this document's Strategy 1 — end-to-end rolled-out classification training) and the **Guided strategy** (Strategy 2 — classifier-guided targets with standard FM training). The numbering below is kept exactly as pre-registered.
 Extended record with full rationale and the three-round external-review log:
 `docs/stage3_decisions.md` (R1–R28, all resolved; reviewer verdict:
 "methodologically sound and aligned with the PDF").

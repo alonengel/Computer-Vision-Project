@@ -260,6 +260,14 @@ Per the user-supplied implementation prompt: the spec's optional "explore the le
 
 **Request (user, after the professor's review):** a full block of the stages in the README with direct links to the notebook files, so a reader of the repository can jump straight to them. Added a table (stage → executed notebook → report → decision records → one-line summary) plus links to the lab notebook, metrics and figures, placed right after the introduction. Documentation only; no code, result or notebook changed.
 
+## 2026-09-10 — Reader-facing names: "Strategy 1 / Strategy 2" → "Rolled strategy / Guided strategy" (user request)
+
+**Request (user):** rename the two mandatory methods wherever they are mentioned so the names inform the reader — the first is the *Rolled* strategy (end-to-end rolled-out classification training), the second the *Guided* strategy (classifier-guided targets with standard FM training).
+
+**Scope.** Display text only; pipeline identifiers (`fm_s1`, `fm_s2`, the `s1`/`s2` sweep column, config keys `strategy1`/`strategy2`, `fit_strategy1/2`) are unchanged. Changed: `scripts/make_tables_stage3.py` (head labels, sweep "Strategy" column via `STRATEGY_NAMES`, joint reference row), `scripts/make_figures_stage3.py` (every legend, title and panel label), all `notebooks/nb3_sections/` texts (with a naming paragraph in the introduction: the Rolled strategy is the specification's Strategy 1, the Guided strategy its Strategy 2; the two method headings in §2 keep that mapping in parentheses), `docs/REPORT_STAGE3.md` (prose renamed; the four embedded tables re-embedded from the regenerated files — a script asserted every numeric cell identical), README (intro + Start-here row), `src/stage3.py` docstring. The pre-registration documents (`docs/adr/0008…`, `docs/stage3_decisions.md`) were **not** rewritten: each received a dated naming note and keeps the spec's numbering. All Stage-3 tables and all 16 Stage-3 figures regenerated (numbers unchanged — the tables differ only in labels); notebook rebuilt via `build_notebook.py 3` + nbconvert (33 cells, 0 errors); `repro_check` green.
+
+**Gotcha:** `make_tables_stage3.py` prints each table after writing it; under the agent's console (cp1252) the `Δ` glyph raised `UnicodeEncodeError` after the first table, leaving the other three files stale (caught by `repro_check`: 2 content mismatches). Re-run with `PYTHONIOENCODING=utf-8`; `tasks.ps1 tables3` from PowerShell is unaffected.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*

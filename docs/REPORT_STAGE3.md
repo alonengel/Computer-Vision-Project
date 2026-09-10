@@ -6,7 +6,7 @@ Specification: `_docs/stage_3.pdf` (source of truth); pre-registered decisions: 
 
 ## Abstract
 
-Stage 3 inserts an FM transformation before the pretrained linear classifier — $z \to \mathrm{FM} \to \hat{z} \to$ frozen probe — testing whether FM can transform frozen encoder features into a representation the existing classifier handles better. The probe is trained first exactly as in Stage 1 and frozen (retrained per dataset × subset seed with the identical recipe; validation audit against the published Stage-1 numbers: 0.000 points difference and exact best-epoch agreement on all six probes); the FM is initialized to **exact** identity (zero final velocity layer), so the pipeline equals the probe at initialization — asserted at feature, logit, and prediction level. Two mandated strategies are compared against the pinned probe at K = 10, T = 4, three subset seeds, with per-seed-paired Δ: **Strategy 1** (end-to-end rolled-out CE training with a relative displacement regularizer, λ validation-selected, λ = 0 always co-reported) and **Strategy 2** (classifier-guided targets — trust-region-projected, monotone-accepted, per-epoch cached — distilled into the FM by standard velocity regression; no CE gradient reaches the FM). The results split along the project-wide pattern: on FGVC-Aircraft/DINOv2, Strategy 2 improves the probe by **+2.50 ± 0.50 points with all three seeds agreeing** (Strategy 1: +0.88 ± 0.23, 3/3); on DTD/ResNet-18 every method sits within noise of the probe (S2 +0.16 ± 0.45; S1 −0.69 ± 0.70). The most interesting finding is the ordering: the indirect strategy — no CE gradient ever reaches the FM — beats direct end-to-end CE training on both datasets, a pattern consistent with stronger regularization from bounded classifier-guided targets and path-regression training (Stage 3 does not isolate which of Strategy 2's differing components is responsible; the resemblance to Stage 2's path-supervision lesson is suggestive, not isolated). All six probes reproduced Stage 1 — recorded validation and test accuracies within 10⁻¹² of the published values, with identical best epochs in the run log; no run triggered the failure ladder; test was evaluated once per locked checkpoint, in one final pass per pre-registered phase — no selection depended on any test read.
+Stage 3 inserts an FM transformation before the pretrained linear classifier — $z \to \mathrm{FM} \to \hat{z} \to$ frozen probe — testing whether FM can transform frozen encoder features into a representation the existing classifier handles better. The probe is trained first exactly as in Stage 1 and frozen (retrained per dataset × subset seed with the identical recipe; validation audit against the published Stage-1 numbers: 0.000 points difference and exact best-epoch agreement on all six probes); the FM is initialized to **exact** identity (zero final velocity layer), so the pipeline equals the probe at initialization — asserted at feature, logit, and prediction level. Two mandated strategies are compared against the pinned probe at K = 10, T = 4, three subset seeds, with per-seed-paired Δ: **Rolled strategy** (end-to-end rolled-out CE training with a relative displacement regularizer, λ validation-selected, λ = 0 always co-reported) and **Guided strategy** (classifier-guided targets — trust-region-projected, monotone-accepted, per-epoch cached — distilled into the FM by standard velocity regression; no CE gradient reaches the FM). The results split along the project-wide pattern: on FGVC-Aircraft/DINOv2, Guided strategy improves the probe by **+2.50 ± 0.50 points with all three seeds agreeing** (Rolled strategy: +0.88 ± 0.23, 3/3); on DTD/ResNet-18 every method sits within noise of the probe (Guided +0.16 ± 0.45; Rolled −0.69 ± 0.70). The most interesting finding is the ordering: the indirect strategy — no CE gradient ever reaches the FM — beats direct end-to-end CE training on both datasets, a pattern consistent with stronger regularization from bounded classifier-guided targets and path-regression training (Stage 3 does not isolate which of the Guided strategy's differing components is responsible; the resemblance to Stage 2's path-supervision lesson is suggestive, not isolated). All six probes reproduced Stage 1 — recorded validation and test accuracies within 10⁻¹² of the published values, with identical best epochs in the run log; no run triggered the failure ladder; test was evaluated once per locked checkpoint, in one final pass per pre-registered phase — no selection depended on any test read.
 
 ## 1 · Setup
 
@@ -16,7 +16,7 @@ Stage 3 inserts an FM transformation before the pretrained linear classifier —
 
 **Training policy (uniform, pre-registered).** AdamW, lr $10^{-3}$, wd $10^{-4}$, batch 64, exactly 200 epochs, best-validation-accuracy checkpoint (ties → lowest validation CE → earliest epoch), validation every epoch. Validation-based selection is symmetric: the baseline probe itself was selected the same way. Failure policy — objective trigger (NaN/Inf loss only): restart with the next fallback of a cumulative ladder (grad-clip 1.0 → lr 3e-4 → internal input standardization, identity-preserving); finite late deterioration is absorbed by checkpointing; an exhausted ladder marks the run failed. Hyperparameters selected per dataset on **seed-0 validation** only (winners applied unchanged to seeds 1–2; seed 0 is disclosed as partly a development run); the **test split stayed sealed** during all training and selection, and was evaluated in one final pass per pre-registered phase (the mandatory grid; then the optional extension), each over its already-locked checkpoints.
 
-**Strategies.** S1: $\mathrm{CE}(W\hat{z}+b, y) + \lambda\,\mathrm{mean}_i \lVert\hat{z}_i - z_i\rVert^2 / (\lVert z_i\rVert^2 + \varepsilon)$ through the full rollout, FM parameters only; λ ∈ {0, 1, 10, 100}; the validation winner **and** λ = 0 are the pre-registered test pair. S2 (all quantities per sample, ε = 10⁻⁸): per epoch, snapshot the FM, set $u_0 = \Pi_{B(z,\rho)}(\hat{z})$ with $\rho = 0.1\lVert z\rVert$, take $m$ normalized CE-gradient steps of size $\eta = \beta\rho$ with re-projection after every step, select the lowest-CE projected iterate as the detached target, cache for all samples, then train one epoch of standard FM regression toward the cache; β ∈ {0.25, 0.5, 1} × m ∈ {1, 3}. The source-centered trust region prevents cumulative target drift across epochs; monotone acceptance guarantees targets never increase CE.
+**Strategies** (named after their training signal — the *Rolled* strategy is the specification's Strategy 1, the *Guided* strategy its Strategy 2)**.** Rolled: $\mathrm{CE}(W\hat{z}+b, y) + \lambda\,\mathrm{mean}_i \lVert\hat{z}_i - z_i\rVert^2 / (\lVert z_i\rVert^2 + \varepsilon)$ through the full rollout, FM parameters only; λ ∈ {0, 1, 10, 100}; the validation winner **and** λ = 0 are the pre-registered test pair. Guided (all quantities per sample, ε = 10⁻⁸): per epoch, snapshot the FM, set $u_0 = \Pi_{B(z,\rho)}(\hat{z})$ with $\rho = 0.1\lVert z\rVert$, take $m$ normalized CE-gradient steps of size $\eta = \beta\rho$ with re-projection after every step, select the lowest-CE projected iterate as the detached target, cache for all samples, then train one epoch of standard FM regression toward the cache; β ∈ {0.25, 0.5, 1} × m ∈ {1, 3}. The source-centered trust region prevents cumulative target drift across epochs; monotone acceptance guarantees targets never increase CE.
 
 ## 2 · Results
 
@@ -27,19 +27,19 @@ Stage 3 inserts an FM transformation before the pretrained linear classifier —
 | Dataset / encoder | Head | Top-1 (%) | Δ vs pinned probe (pts, paired) |
 |---|---|---|---|
 | DTD / ResNet-18 | Pinned Stage-1 probe (baseline) | 54.31 ± 0.28 | — |
-| DTD / ResNet-18 | Strategy 1 — rolled-out CE training (λ = 1) | 53.62 ± 0.89 | -0.69 ± 0.70 (1/3 seeds > 0) |
-| DTD / ResNet-18 | Strategy 2 — classifier-guided targets (β = 0.25, m = 1) | 54.47 ± 0.70 | +0.16 ± 0.45 (2/3 seeds > 0) |
+| DTD / ResNet-18 | Rolled strategy — end-to-end rolled-out CE training (λ = 1) | 53.62 ± 0.89 | -0.69 ± 0.70 (1/3 seeds > 0) |
+| DTD / ResNet-18 | Guided strategy — classifier-guided targets (β = 0.25, m = 1) | 54.47 ± 0.70 | +0.16 ± 0.45 (2/3 seeds > 0) |
 | FGVC-Aircraft / DINOv2 | Pinned Stage-1 probe (baseline) | 51.30 ± 0.95 | — |
-| FGVC-Aircraft / DINOv2 | Strategy 1 — rolled-out CE training (λ = 1) | 52.18 ± 1.11 | +0.88 ± 0.23 (3/3 seeds > 0) |
-| FGVC-Aircraft / DINOv2 | Strategy 2 — classifier-guided targets (β = 0.5, m = 3) | 53.80 ± 0.95 | +2.50 ± 0.50 (3/3 seeds > 0) |
+| FGVC-Aircraft / DINOv2 | Rolled strategy — end-to-end rolled-out CE training (λ = 1) | 52.18 ± 1.11 | +0.88 ± 0.23 (3/3 seeds > 0) |
+| FGVC-Aircraft / DINOv2 | Guided strategy — classifier-guided targets (β = 0.5, m = 3) | 53.80 ± 0.95 | +2.50 ± 0.50 (3/3 seeds > 0) |
 
 Top-1 accuracy (%) on the complete official test split, K = 10, T = 4; mean ± sample std over the 3 subset seeds. Δ is **paired per seed** against the exact pinned probe of that seed — the identical frozen classifier inside the pipeline (the pipeline at initialization equals it exactly, by the zero-velocity init). Hyperparameters (λ; β, m) were selected per dataset on **seed-0 validation** only; seed 0 is therefore partly a development run, and the 3-seed mean is a summary, not an independent confirmatory estimate. n = 3 — no significance claims.
 
-**Reading it.** The stage's question gets a split answer. On **FGVC-Aircraft/DINOv2** the transport helps: Strategy 2 gains +2.50 ± 0.50 points with per-seed deltas +2.76 / +1.92 / +2.82 — every seed positive, and larger than the probe's own seed spread; Strategy 1 gains +0.88 ± 0.23 (3/3). On **DTD/ResNet-18** nothing separates from the probe (S2 +0.16 ± 0.45, S1 −0.69 ± 0.70). The same geography appeared in Stage 2 and, before it, in the Stage-1 headroom measurements: the fine-grained DINOv2 representation still holds structure a fixed linear boundary has not extracted; DTD showed no benefit at this operating point (K = 10, this encoder, this classifier — whether its representation is exhausted in general is not established here). The gains land inside the pre-registered expectation band ("low single digits, possibly ≈0 on DTD").
+**Reading it.** The stage's question gets a split answer. On **FGVC-Aircraft/DINOv2** the transport helps: the Guided strategy gains +2.50 ± 0.50 points with per-seed deltas +2.76 / +1.92 / +2.82 — every seed positive, and larger than the probe's own seed spread; Rolled strategy gains +0.88 ± 0.23 (3/3). On **DTD/ResNet-18** nothing separates from the probe (Guided +0.16 ± 0.45, Rolled −0.69 ± 0.70). The same geography appeared in Stage 2 and, before it, in the Stage-1 headroom measurements: the fine-grained DINOv2 representation still holds structure a fixed linear boundary has not extracted; DTD showed no benefit at this operating point (K = 10, this encoder, this classifier — whether its representation is exhausted in general is not established here). The gains land inside the pre-registered expectation band ("low single digits, possibly ≈0 on DTD").
 
-**The ordering S2 > S1 holds on both datasets — and on validation before any test read.** Strategy 2 never passes a CE gradient into the FM; it distills conservative targets (trust-region-capped at 10% of each feature's norm, CE-monotone by acceptance) through standard velocity regression. Strategy 1 backpropagates CE directly through the rollout. Both memorize the K = 10 training set (§3 — train accuracy ≈100%), so the difference lies off the training points. **Why S2 wins is not isolated by this experiment**: it differs through several components at once (source-centred trust region, monotone target selection, classifier-guided targets, path-regression training), and the advantage is *consistent with* stronger regularization from bounded targets and path regression — everything that differs pushes S2 toward conservatism. The resemblance to Stage 2's standard-vs-rolled-out result is a suggestive cross-experiment pattern, not an isolated mechanism. (n = 3.)
+**The ordering Guided > Rolled holds on both datasets — and on validation before any test read.** The Guided strategy never passes a CE gradient into the FM; it distills conservative targets (trust-region-capped at 10% of each feature's norm, CE-monotone by acceptance) through standard velocity regression. Rolled strategy backpropagates CE directly through the rollout. Both memorize the K = 10 training set (§3 — train accuracy ≈100%), so the difference lies off the training points. **Why Guided wins is not isolated by this experiment**: it differs through several components at once (source-centred trust region, monotone target selection, classifier-guided targets, path-regression training), and the advantage is *consistent with* stronger regularization from bounded targets and path regression — everything that differs pushes Guided toward conservatism. The resemblance to Stage 2's standard-vs-rolled-out result is a suggestive cross-experiment pattern, not an isolated mechanism. (n = 3.)
 
-### 2.2 Strategy 1 — the pre-registered regularization pair
+### 2.2 Rolled strategy — the pre-registered regularization pair
 
 *Table 2 — `results/metrics/stage3_lambda_ablation_table.md`:*
 
@@ -52,7 +52,7 @@ Top-1 accuracy (%) on the complete official test split, K = 10, T = 4; mean ± s
 
 Pre-registered pair: the validation winner AND λ = 0 both receive a test read-out, so the with/without-regularization comparison involves no post-hoc choice.
 
-λ = 1 sits above λ = 0 on both datasets, and the three observed seeds show ≈4× lower delta variability with λ = 1 on FGVC (±0.23 vs ±0.95) — a small mean effect; three seeds cannot establish stabilization in general. Note that "less movement" is not the mechanism: at their selected checkpoints, S2 moves features *more* than regularized S1 on FGVC (mean ‖ẑ−z‖ ≈ 4.6 vs 1.2 units) and generalizes better; displacement magnitude alone does not explain performance — the movement direction and/or the training construction may matter.
+λ = 1 sits above λ = 0 on both datasets, and the three observed seeds show ≈4× lower delta variability with λ = 1 on FGVC (±0.23 vs ±0.95) — a small mean effect; three seeds cannot establish stabilization in general. Note that "less movement" is not the mechanism: at their selected checkpoints, Guided moves features *more* than regularized Rolled on FGVC (mean ‖ẑ−z‖ ≈ 4.6 vs 1.2 units) and generalizes better; displacement magnitude alone does not explain performance — the movement direction and/or the training construction may matter.
 
 ### 2.3 Selection transparency
 
@@ -60,26 +60,26 @@ Pre-registered pair: the validation winner AND λ = 0 both receive a test read-o
 
 | Dataset | Strategy | Configuration | Val top-1 (%) | Checkpoint epoch | Fallback |
 |---|---|---|---|---|---|
-| DTD | S1 | lam=0 | 49.79 | 1 | 0 |
-| DTD | S1 | lam=1 | 50.90 | 110 | 0 |
-| DTD | S1 | lam=10 | 50.59 | 103 | 0 |
-| DTD | S1 | lam=100 | 50.74 | 1 | 0 |
-| DTD | S2 | beta=0.25,m=1 | 51.97 | 167 | 0 |
-| DTD | S2 | beta=0.25,m=3 | 51.76 | 156 | 0 |
-| DTD | S2 | beta=0.5,m=1 | 51.86 | 157 | 0 |
-| DTD | S2 | beta=0.5,m=3 | 51.81 | 152 | 0 |
-| DTD | S2 | beta=1.0,m=1 | 51.91 | 145 | 0 |
-| DTD | S2 | beta=1.0,m=3 | 51.70 | 10 | 0 |
-| FGVC-Aircraft | S1 | lam=0 | 53.74 | 16 | 0 |
-| FGVC-Aircraft | S1 | lam=1 | 53.95 | 86 | 0 |
-| FGVC-Aircraft | S1 | lam=10 | 53.05 | 184 | 0 |
-| FGVC-Aircraft | S1 | lam=100 | 52.72 | 156 | 0 |
-| FGVC-Aircraft | S2 | beta=0.25,m=1 | 55.06 | 42 | 0 |
-| FGVC-Aircraft | S2 | beta=0.25,m=3 | 55.78 | 17 | 0 |
-| FGVC-Aircraft | S2 | beta=0.5,m=1 | 55.54 | 62 | 0 |
-| FGVC-Aircraft | S2 | beta=0.5,m=3 | 56.11 | 43 | 0 |
-| FGVC-Aircraft | S2 | beta=1.0,m=1 | 55.78 | 34 | 0 |
-| FGVC-Aircraft | S2 | beta=1.0,m=3 | 56.11 | 17 | 0 |
+| DTD | Rolled | lam=0 | 49.79 | 1 | 0 |
+| DTD | Rolled | lam=1 | 50.90 | 110 | 0 |
+| DTD | Rolled | lam=10 | 50.59 | 103 | 0 |
+| DTD | Rolled | lam=100 | 50.74 | 1 | 0 |
+| DTD | Guided | beta=0.25,m=1 | 51.97 | 167 | 0 |
+| DTD | Guided | beta=0.25,m=3 | 51.76 | 156 | 0 |
+| DTD | Guided | beta=0.5,m=1 | 51.86 | 157 | 0 |
+| DTD | Guided | beta=0.5,m=3 | 51.81 | 152 | 0 |
+| DTD | Guided | beta=1.0,m=1 | 51.91 | 145 | 0 |
+| DTD | Guided | beta=1.0,m=3 | 51.70 | 10 | 0 |
+| FGVC-Aircraft | Rolled | lam=0 | 53.74 | 16 | 0 |
+| FGVC-Aircraft | Rolled | lam=1 | 53.95 | 86 | 0 |
+| FGVC-Aircraft | Rolled | lam=10 | 53.05 | 184 | 0 |
+| FGVC-Aircraft | Rolled | lam=100 | 52.72 | 156 | 0 |
+| FGVC-Aircraft | Guided | beta=0.25,m=1 | 55.06 | 42 | 0 |
+| FGVC-Aircraft | Guided | beta=0.25,m=3 | 55.78 | 17 | 0 |
+| FGVC-Aircraft | Guided | beta=0.5,m=1 | 55.54 | 62 | 0 |
+| FGVC-Aircraft | Guided | beta=0.5,m=3 | 56.11 | 43 | 0 |
+| FGVC-Aircraft | Guided | beta=1.0,m=1 | 55.78 | 34 | 0 |
+| FGVC-Aircraft | Guided | beta=1.0,m=3 | 56.11 | 17 | 0 |
 
 Seed-0 **validation** accuracy of the full pipeline per swept configuration (test untouched during selection). Winners per dataset by highest validation accuracy (ties → lowest validation CE → grid order). Fallback level 0 = the default recipe (ADR 0008 §7).
 
@@ -91,16 +91,16 @@ Seed-0 **validation** accuracy of the full pipeline per swept configuration (tes
 |---|---|---|---|
 | DTD / ResNet-18 | Joint FM + classifier fine-tuning | 53.88 ± 0.63 | -0.43 ± 0.37 |
 | DTD / ResNet-18 | Control: classifier-only continued training | 54.26 ± 0.46 | -0.05 ± 0.19 |
-| DTD / ResNet-18 | (reference) Strategy 2, frozen classifier | 54.47 ± 0.70 | +0.16 ± 0.45 |
+| DTD / ResNet-18 | (reference) Guided strategy, frozen classifier | 54.47 ± 0.70 | +0.16 ± 0.45 |
 | FGVC-Aircraft / DINOv2 | Joint FM + classifier fine-tuning | 51.86 ± 0.96 | +0.56 ± 0.98 |
 | FGVC-Aircraft / DINOv2 | Control: classifier-only continued training | 51.94 ± 0.98 | +0.64 ± 0.08 |
-| FGVC-Aircraft / DINOv2 | (reference) Strategy 2, frozen classifier | 53.80 ± 0.95 | +2.50 ± 0.50 |
+| FGVC-Aircraft / DINOv2 | (reference) Guided strategy, frozen classifier | 53.80 ± 0.95 | +2.50 ± 0.50 |
 
-The extension was pre-registered as an "upper reference"; it is not one. The joint variant does not outperform classifier-only continued training in these three seeds (FGVC: +0.56 ± 0.98 vs +0.64 ± 0.08; per-seed joint−control: +0.06 / −1.08 / +0.78; DTD: both ≈0/slightly negative), so **the results provide no evidence of an additional FM-attributable gain when the classifier is unfrozen** — and both sit far below the frozen-classifier Strategy 2 (+2.50 ± 0.50). The early validation-selected checkpoints (epochs 0–18, single-digit in 5 of 6 runs) are consistent with rapid overfitting in the K = 10 regime, but this experiment does not isolate classifier freezing as the cause — particularly because the best frozen configuration uses Strategy 2 while joint training uses a different objective; even the closest matched-objective comparison (frozen Strategy 1 vs joint, both CE-trained) does not separate the two (+0.88 ± 0.23 vs +0.56 ± 0.98). Empirically, frozen-classifier Strategy 2 remains the best tested configuration. Without the control — added at external-review insistence — the +0.56 could have masqueraded as a small FM win.
+The extension was pre-registered as an "upper reference"; it is not one. The joint variant does not outperform classifier-only continued training in these three seeds (FGVC: +0.56 ± 0.98 vs +0.64 ± 0.08; per-seed joint−control: +0.06 / −1.08 / +0.78; DTD: both ≈0/slightly negative), so **the results provide no evidence of an additional FM-attributable gain when the classifier is unfrozen** — and both sit far below the frozen-classifier Guided strategy (+2.50 ± 0.50). The early validation-selected checkpoints (epochs 0–18, single-digit in 5 of 6 runs) are consistent with rapid overfitting in the K = 10 regime, but this experiment does not isolate classifier freezing as the cause — particularly because the best frozen configuration uses Guided strategy while joint training uses a different objective; even the closest matched-objective comparison (frozen Rolled strategy vs joint, both CE-trained) does not separate the two (+0.88 ± 0.23 vs +0.56 ± 0.98). Empirically, frozen-classifier Guided strategy remains the best tested configuration. Without the control — added at external-review insistence — the +0.56 could have masqueraded as a small FM win.
 
 ## 3 · Training behaviour
 
-Both strategies drive train-pipeline accuracy to ≈100% within the budget (K = 10 supplies 470–1000 images against 788K / 657K FM parameters on DTD / FGVC respectively) while validation plateaus — textbook memorization, absorbed by the best-validation-accuracy checkpoint exactly as in Stage 1. Winner-run checkpoints land mid-training across all seeds (S1: epochs 36–179; S2: 25–185); the one family that checkpoints near the start is the unregularized λ = 0 variant (epochs 0–2) — the displacement penalty is what buys S1 its useful training trajectory. The failure policy never fired: zero NaN/Inf events, every model completed at fallback level 0, so the entire pre-registered ladder (clipping → lr → standardization) remained unused — in contrast to Stage 2, where endpoint-only training diverged at full split; here the shallow T = 4 rollout, identity start, and validation checkpointing kept everything tame. Strategy-internal diagnostics (`stage3_diag_*.png`): S2's trust-region hit rate and target-CE traces show the target construction working as designed — the CE at the selected target sits well below the CE at the projected start, and a substantial fraction of targets sit on the trust-region boundary, i.e. the cap binds and is doing its job.
+Both strategies drive train-pipeline accuracy to ≈100% within the budget (K = 10 supplies 470–1000 images against 788K / 657K FM parameters on DTD / FGVC respectively) while validation plateaus — textbook memorization, absorbed by the best-validation-accuracy checkpoint exactly as in Stage 1. Winner-run checkpoints land mid-training across all seeds (Rolled: epochs 36–179; Guided: 25–185); the one family that checkpoints near the start is the unregularized λ = 0 variant (epochs 0–2) — the displacement penalty is what buys Rolled its useful training trajectory. The failure policy never fired: zero NaN/Inf events, every model completed at fallback level 0, so the entire pre-registered ladder (clipping → lr → standardization) remained unused — in contrast to Stage 2, where endpoint-only training diverged at full split; here the shallow T = 4 rollout, identity start, and validation checkpointing kept everything tame. Strategy-internal diagnostics (`stage3_diag_*.png`): Guided's trust-region hit rate and target-CE traces show the target construction working as designed — the CE at the selected target sits well below the CE at the projected start, and a substantial fraction of targets sit on the trust-region boundary, i.e. the cap binds and is doing its job.
 
 ## 4 · Feature-space geometry
 
@@ -124,7 +124,7 @@ The transports are deliberately small — roughly 5–13% of the mean feature no
 | FM close to identity | as specified (strengthened) | zero final layer ⇒ exact identity, asserted at feature/logit/prediction level |
 | Velocity net + Euler as Stage 2; single T; K = 10 | as specified | T = 4 pre-registered; K = the spec's suggested default |
 | Both strategies + main comparison + deliverables | as specified | table + Δ; train/validation curves for both methods; joint-embedding feature visualization |
-| Relative displacement penalty (S1); trust region / monotone acceptance / per-epoch cached targets (S2) | within spec freedom | the spec invites regularization and constrained target updates; all details pre-registered (ADR 0008, three external review rounds) |
+| Relative displacement penalty (Rolled); trust region / monotone acceptance / per-epoch cached targets (Guided) | within spec freedom | the spec invites regularization and constrained target updates; all details pre-registered (ADR 0008, three external review rounds) |
 | Validation-accuracy checkpointing; 3-subset-seed repetition | our choice (spec silent) | symmetric to the baseline's own selection; keeps paired Δ ± std consistent with Stages 1–2 |
 | Optional joint fine-tuning + classifier-only control | done (see §2.4) | control added so any joint gain is attributable to the FM rather than to longer classifier training |
 

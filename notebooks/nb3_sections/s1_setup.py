@@ -26,8 +26,8 @@ s3 = cfg["stage3"]
 print("\\nSettings:", s3["settings"], "| K =", s3["k_shot"], "| T =", s3["T"],
       "| feature space:", s3["feature_space"])
 print("Training policy:", json.dumps(s3["training"], indent=2))
-print("S1 lambda grid:", s3["strategy1"]["lambda_grid"],
-      "| S2 grid: beta", s3["strategy2"]["beta_grid"], "x m", s3["strategy2"]["m_grid"],
+print("Rolled-strategy lambda grid:", s3["strategy1"]["lambda_grid"],
+      "| Guided-strategy grid: beta", s3["strategy2"]["beta_grid"], "x m", s3["strategy2"]["m_grid"],
       "| trust region alpha =", s3["strategy2"]["alpha_trust_region"])
 """),
     ("markdown", """

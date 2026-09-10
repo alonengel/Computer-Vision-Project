@@ -2,6 +2,8 @@
 
 > Internal working document for team review, prior to being fixed in ADR 0008.
 > Source of truth: `_docs/stage_3.pdf`. Date: 2026-08-24. Status: **awaiting approval — nothing has been implemented.**
+>
+> **Naming note (added 2026-09-10, no other change):** the deliverables call Strategy 1 the **Rolled strategy** and Strategy 2 the **Guided strategy**; this record keeps the spec's numbering.
 
 ## What is being built
 

@@ -9,10 +9,10 @@ uniform training policy (AdamW, exactly `epochs` epochs, best-validation-
 accuracy checkpoint with tie-breaks, objective NaN/Inf failure trigger with a
 pre-registered fallback ladder handled by the runner):
 
-  Strategy 1  backprop CE through the full rollout, FM parameters only,
+  Strategy 1 ("Rolled")  backprop CE through the full rollout, FM parameters only,
               plus a RELATIVE displacement penalty
               lambda * mean_i ||z_hat_i - z_i||^2 / (||z_i||^2 + eps).
-  Strategy 2  classifier-guided targets + standard FM training. No CE gradient
+  Strategy 2 ("Guided")  classifier-guided targets + standard FM training. No CE gradient
               ever reaches the FM. Per epoch (two-phase): snapshot the FM,
               build per-sample targets with normalized CE-gradient steps
               projected after EVERY step (including step 0) onto the ball

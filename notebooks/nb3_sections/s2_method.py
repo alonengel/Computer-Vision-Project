@@ -2,17 +2,17 @@ CELLS = [
     ("markdown", """
 ## 2 · The two training strategies, and the guards that anchor the comparison
 
-**Strategy 1 — end-to-end rolled-out classification training.** For each training feature $z$, run the complete $T$-step rollout to $\\hat{z}$, pass it through the frozen classifier, and minimize
+**Rolled strategy — end-to-end rolled-out classification training (the spec's Strategy 1).** For each training feature $z$, run the complete $T$-step rollout to $\\hat{z}$, pass it through the frozen classifier, and minimize
 
 $$\\mathcal{L}_{\\mathrm{cls}} = \\mathrm{CE}(W\\hat{z} + b,\\, y) \\;+\\; \\lambda\\,\\mathrm{mean}_i\\,\\frac{\\lVert\\hat{z}_i - z_i\\rVert^2}{\\lVert z_i\\rVert^2 + \\varepsilon},$$
 
 backpropagating through the full rollout and updating **only** the FM parameters. The relative displacement penalty (the spec's suggested regularization, made scale-free) discourages unnecessarily large changes; $\\lambda$ is chosen on validation from {0, 1, 10, 100} and the $\\lambda = 0$ variant is always test-reported alongside the winner (pre-registered pair).
 
-**Strategy 2 — classifier-guided targets and standard FM training.** Per epoch, in two phases. *Phase 1 (targets, snapshot):* run every training feature through the current FM to $\\hat{z}$; project onto the trust region, $u_0 = \\Pi_{B(z,\\rho)}(\\hat{z})$ with $\\rho = 0.1\\lVert z\\rVert$; take $m$ normalized CE-gradient steps of size $\\eta = \\beta\\rho$, re-projecting after every step,
+**Guided strategy — classifier-guided targets and standard FM training (the spec's Strategy 2).** Per epoch, in two phases. *Phase 1 (targets, snapshot):* run every training feature through the current FM to $\\hat{z}$; project onto the trust region, $u_0 = \\Pi_{B(z,\\rho)}(\\hat{z})$ with $\\rho = 0.1\\lVert z\\rVert$; take $m$ normalized CE-gradient steps of size $\\eta = \\beta\\rho$, re-projecting after every step,
 
 $$u_{j+1} = \\Pi_{B(z,\\rho)}\\!\\left(u_j - \\eta\\,\\frac{\\nabla_{u_j}\\mathrm{CE}}{\\lVert\\nabla_{u_j}\\mathrm{CE}\\rVert + \\varepsilon}\\right);$$
 
-the target $\\hat{z}'$ is the **lowest-CE iterate** among the projected $\\{u_0,\\dots,u_m\\}$ (monotone acceptance), detached, cached for all samples. *Phase 2 (FM update):* one epoch of **standard FM regression** against the fixed cache — $t \\sim U(0,1)$, $z_t = (1-t)z + t\\hat{z}'$, loss $\\lVert v_\\theta(z_t, t) - (\\hat{z}' - z)\\rVert^2$. All target quantities are per-sample; **no CE gradient ever reaches the FM** — that separation is the scientific contrast with Strategy 1. Grid: $\\beta \\in \\{0.25, 0.5, 1\\} \\times m \\in \\{1, 3\\}$ on validation. The source-centered trust region (not one centered at $\\hat{z}$) is what prevents cumulative target drift across epochs — without it, repeated recomputation could manufacture arbitrarily classifier-friendly features.
+the target $\\hat{z}'$ is the **lowest-CE iterate** among the projected $\\{u_0,\\dots,u_m\\}$ (monotone acceptance), detached, cached for all samples. *Phase 2 (FM update):* one epoch of **standard FM regression** against the fixed cache — $t \\sim U(0,1)$, $z_t = (1-t)z + t\\hat{z}'$, loss $\\lVert v_\\theta(z_t, t) - (\\hat{z}' - z)\\rVert^2$. All target quantities are per-sample; **no CE gradient ever reaches the FM** — that separation is the scientific contrast with the Rolled strategy. Grid: $\\beta \\in \\{0.25, 0.5, 1\\} \\times m \\in \\{1, 3\\}$ on validation. The source-centered trust region (not one centered at $\\hat{z}$) is what prevents cumulative target drift across epochs — without it, repeated recomputation could manufacture arbitrarily classifier-friendly features.
 
 **Two guards, train/validation data only (the test set stayed sealed):**
 

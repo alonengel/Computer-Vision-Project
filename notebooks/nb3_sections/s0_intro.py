@@ -13,8 +13,10 @@ The linear classifier is trained first, **exactly as in Stage 1**, then frozen; 
 Three heads are compared per dataset, exactly as the spec's Main Comparison requires:
 
 1. **Pinned Stage-1 linear probe** — the baseline, and literally the frozen classifier inside the pipeline;
-2. **Strategy 1 — end-to-end rolled-out classification training**: backpropagate CE through the complete rollout, updating only the FM; with a relative displacement regularizer $\\lambda\\,\\overline{\\lVert\\hat{z}-z\\rVert^2/\\lVert z\\rVert^2}$ (the spec explicitly invites such regularization), $\\lambda$ selected on validation, and the pre-registered $\\lambda = 0$ variant always reported;
-3. **Strategy 2 — classifier-guided targets + standard FM training**: the frozen classifier's feature-space CE gradient constructs a nearby improved target $\\hat{z}'$, and the FM is trained with the *standard* velocity-regression loss toward it — **no CE gradient ever reaches the FM**.
+2. **Rolled strategy** (the specification's *Strategy 1* — end-to-end rolled-out classification training): backpropagate CE through the complete rollout, updating only the FM; with a relative displacement regularizer $\\lambda\\,\\overline{\\lVert\\hat{z}-z\\rVert^2/\\lVert z\\rVert^2}$ (the spec explicitly invites such regularization), $\\lambda$ selected on validation, and the pre-registered $\\lambda = 0$ variant always reported;
+3. **Guided strategy** (the specification's *Strategy 2* — classifier-guided targets + standard FM training): the frozen classifier's feature-space CE gradient constructs a nearby improved target $\\hat{z}'$, and the FM is trained with the *standard* velocity-regression loss toward it — **no CE gradient ever reaches the FM**.
+
+**Naming.** Throughout this notebook, its figures and tables, the two methods are called the **Rolled** and **Guided** strategies — after their training signal (CE backpropagated through the *rolled-out* transport vs. classifier-*guided* regression targets); they are the specification's Strategy 1 and Strategy 2, respectively, and ADR 0008 keeps that numbering.
 
 **Scope (per the spec):** one encoder per dataset — DTD → ResNet-18, FGVC-Aircraft → DINOv2 (the Stage-1 validation-selected encoders); one training-set size K = 10 (the spec's suggested default); one fixed T = 4 throughout. Three runs per setting (subset seeds {0, 1, 2}, probe-init and FM-init fixed at 0, as in Stage 1) so every Δ is **paired per seed** against the exact pinned probe of that seed.
 """),

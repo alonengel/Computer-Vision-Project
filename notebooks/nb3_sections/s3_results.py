@@ -11,7 +11,7 @@ display(Markdown((REPO / "results" / "metrics" / "stage3_main_table.md")
                  .read_text(encoding="utf-8")))
 """),
     ("markdown", """
-### 3.2 Strategy 1 — with vs without the displacement regularizer (pre-registered pair)
+### 3.2 Rolled strategy — with vs without the displacement regularizer (pre-registered pair)
 """),
     ("code", """
 display(Markdown((REPO / "results" / "metrics" / "stage3_lambda_ablation_table.md")
@@ -28,8 +28,8 @@ display(Image(str(REPO / "results" / "figures" / "stage3_sweep.png"), width=1150
     ("code", """
 from src.visualize import dataset_label, encoder_label
 
-HEAD_SHOW = {"fm_s1": "Strategy 1", "fm_s1_lambda0": "Strategy 1, λ=0",
-             "fm_s2": "Strategy 2"}
+HEAD_SHOW = {"fm_s1": "Rolled strategy", "fm_s1_lambda0": "Rolled strategy, λ=0",
+             "fm_s2": "Guided strategy"}
 r3 = pd.read_csv(REPO / "results" / "metrics" / "runs_stage3.csv")
 ok = r3[r3["status"] == "ok"]
 print("Per-seed paired deltas (percentage points), the quantity every claim rests on:")

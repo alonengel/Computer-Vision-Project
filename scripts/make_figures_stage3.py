@@ -2,7 +2,7 @@
 
 Per ADR 0008 §10: for both strategies the COMPARABLE end-to-end metrics
 (train/validation pipeline CE and accuracy) share axes; strategy-internal
-quantities (S1 displacement penalty, S2 FM-regression loss, S2 target CE
+quantities (Rolled displacement penalty, Guided FM-regression loss, Guided target CE
 before/after, displacements, trust-region hit rate) are drawn on separate
 axes — they measure different things. Feature viz: one PCA fitted jointly on
 [z, z_hat_S1, z_hat_S2] in RAW space, the shared viz_selection classes and
@@ -55,7 +55,7 @@ def curve_charts():
     for ds, enc in cfg["stage3"]["settings"]:
         h1, h2 = curve(ds, enc, "fm_s1"), curve(ds, enc, "fm_s2")
         fig, (ax_ce, ax_acc) = plt.subplots(1, 2, figsize=(12.8, 4.6))
-        for h, color, name in ((h1, S1_COLOR, "Strategy 1"), (h2, S2_COLOR, "Strategy 2")):
+        for h, color, name in ((h1, S1_COLOR, "Rolled strategy"), (h2, S2_COLOR, "Guided strategy")):
             ax_ce.plot(h["epoch"], h["train_pipeline_ce"], color=color, ls="--",
                        lw=1.8, label=f"{name} — train")
             ax_ce.plot(h["epoch"], h["val_ce"], color=color, ls="-", lw=2.2,
@@ -84,19 +84,19 @@ def diag_charts():
         axes = axes2d.ravel()
         a = axes[0]
         a.plot(h1["epoch"], h1["mean_disp"], color=S1_COLOR, lw=2,
-               label="Strategy 1: mean ‖ẑ−z‖ (train)")
+               label="Rolled strategy: mean ‖ẑ−z‖ (train)")
         a.plot(h2["epoch"], h2["mean_disp"], color=S2_COLOR, lw=2,
-               label="Strategy 2: mean ‖ẑ−z‖ (train)")
+               label="Guided strategy: mean ‖ẑ−z‖ (train)")
         a.plot(h2["epoch"], h2["mean_target_disp"], color=S2_COLOR, ls="--", lw=1.6,
-               label="Strategy 2: mean ‖target−z‖")
+               label="Guided strategy: mean ‖target−z‖")
         a.set_title("displacement (feature units)", fontsize=11)
         a.legend(fontsize=8)
         a = axes[1]
         a.semilogy(h1["epoch"], h1["train_penalty"], color=S1_COLOR, lw=2)
-        a.set_title("S1 relative displacement penalty (log)", fontsize=11)
+        a.set_title("Rolled strategy: relative displacement penalty (log)", fontsize=11)
         a = axes[2]
         a.semilogy(h2["epoch"], h2["fm_loss"], color=S2_COLOR, lw=2)
-        a.set_title("S2 FM regression loss (log)", fontsize=11)
+        a.set_title("Guided strategy: FM regression loss (log)", fontsize=11)
         a = axes[3]
         a.plot(h2["epoch"], h2["ce_unprojected_zhat"], color="#949494", lw=1.6,
                label="CE(ẑ) unprojected (diagnostic)")
@@ -110,7 +110,7 @@ def diag_charts():
         a2.set_ylabel("trust-region hit rate (%)", color="#029E73", fontsize=9)
         a2.tick_params(axis="y", labelcolor="#029E73")
         a2.grid(False)
-        a.set_title("S2 target construction (phase-1 snapshot)", fontsize=11)
+        a.set_title("Guided strategy: target construction (phase-1 snapshot)", fontsize=11)
         a.legend(fontsize=8)
         for ax in axes:
             ax.set_xlabel("epoch")
@@ -141,8 +141,8 @@ def feature_charts():
         Z2 = fms["fm_s2"].transport(X)
         pca, (xy0, xy1, xy2) = _joint_pca([X.numpy(), Z1.numpy(), Z2.numpy()])
         panels = [{"title": "Original features z", "xy": xy0, "labels": y},
-                  {"title": "After Strategy 1 (ẑ)", "xy": xy1, "labels": y},
-                  {"title": "After Strategy 2 (ẑ)", "xy": xy2, "labels": y}]
+                  {"title": "After the Rolled strategy (ẑ)", "xy": xy1, "labels": y},
+                  {"title": "After the Guided strategy (ẑ)", "xy": xy2, "labels": y}]
         print("figure:", feature_projection(
             panels, [names_all[c] for c in classes],
             f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: features "
@@ -150,9 +150,9 @@ def feature_charts():
             f"stage3_features_{ds}_{enc}.png", axis_labels=pc_labels(pca)))
         # Same joint fit, overlaid: original (faded) -> transported (solid), per strategy.
         print("figure:", feature_overlay(
-            [{"title": "Strategy 1: original z (faded) → ẑ (solid)", "xy_before": xy0,
+            [{"title": "Rolled strategy: original z (faded) → ẑ (solid)", "xy_before": xy0,
               "xy_after": xy1, "labels": y},
-             {"title": "Strategy 2: original z (faded) → ẑ (solid)", "xy_before": xy0,
+             {"title": "Guided strategy: original z (faded) → ẑ (solid)", "xy_before": xy0,
               "xy_after": xy2, "labels": y}],
             [names_all[c] for c in classes],
             f"{dataset_label(ds)} — {encoder_label(enc, short=True)}: before/after overlay "
@@ -196,8 +196,8 @@ def sweep_chart():
     sw = pd.read_csv(metrics_dir() / "stage3_sweep.csv")
     r3 = pd.read_csv(metrics_dir() / "runs_stage3.csv")
     settings = cfg["stage3"]["settings"]
-    strategies = (("s1", S1_COLOR, "Strategy 1 — rolled-out CE"),
-                  ("s2", S2_COLOR, "Strategy 2 — classifier-guided targets"))
+    strategies = (("s1", S1_COLOR, "Rolled strategy — end-to-end rolled-out CE"),
+                  ("s2", S2_COLOR, "Guided strategy — classifier-guided targets"))
     fig, axes = plt.subplots(len(settings), 2, figsize=(14.5, 4.9 * len(settings)),
                              squeeze=False)
     for i, (ds, enc) in enumerate(settings):
@@ -260,7 +260,7 @@ def sweep_chart():
 def checkpoint_chart():
     """One row per dataset: (left) validation-selected checkpoint epoch per subset
     seed, annotated with the best validation top-1; (right) mean ‖ẑ−z‖ at that
-    checkpoint — grouped bars, Strategy 1 vs Strategy 2. Checkpoint epochs come
+    checkpoint — grouped bars, Rolled vs Guided strategy. Checkpoint epochs come
     from runs_stage3.csv (the table of record, full tie-break rule); the
     displacement is read from the training history at that epoch."""
     from src.evaluation import metrics_dir
@@ -269,7 +269,7 @@ def checkpoint_chart():
     r3 = pd.read_csv(metrics_dir() / "runs_stage3.csv")
     settings, seeds = cfg["stage3"]["settings"], cfg["stage3"]["subset_seeds"]
     n_epochs = cfg["stage3"]["training"]["epochs"]
-    heads = (("fm_s1", S1_COLOR, "Strategy 1"), ("fm_s2", S2_COLOR, "Strategy 2"))
+    heads = (("fm_s1", S1_COLOR, "Rolled strategy"), ("fm_s2", S2_COLOR, "Guided strategy"))
     width = 0.36
     fig, axes = plt.subplots(len(settings), 2, figsize=(14.5, 4.7 * len(settings)),
                              squeeze=False)
@@ -321,7 +321,7 @@ def checkpoint_chart():
 # --------------------------------------------------------------------------- #
 # Optional extension (ADR 0008 §9): training behaviour + feature space
 # --------------------------------------------------------------------------- #
-JOINT_COLOR, CTRL_COLOR = "#6A3D9A", "#029E73"     # distinct from the S1 / S2 colours
+JOINT_COLOR, CTRL_COLOR = "#6A3D9A", "#029E73"     # distinct from the Rolled / Guided colours
 
 
 def joint_curve_charts():
@@ -368,7 +368,7 @@ def joint_curve_charts():
 
 def joint_feature_charts():
     """Feature space of the optional extension: original z, after the mandatory
-    Strategy-2 FM (frozen classifier), after the jointly fine-tuned FM — one PCA
+    Guided-strategy FM (frozen classifier), after the jointly fine-tuned FM — one PCA
     fitted jointly on the three sets, the shared viz_selection classes and
     class colours, seed 0. Uses the models checkpointed by run_stage3_joint.py."""
     cfg = load_config()
@@ -393,7 +393,7 @@ def joint_feature_charts():
         Zj = fm_joint.transport(X)
         pca, (xy0, xy1, xy2) = _joint_pca([X.numpy(), Z2.numpy(), Zj.numpy()])
         panels = [{"title": "Original features z", "xy": xy0, "labels": y},
-                  {"title": "After Strategy 2 (ẑ, frozen classifier)", "xy": xy1,
+                  {"title": "After the Guided strategy (ẑ, frozen classifier)", "xy": xy1,
                    "labels": y},
                   {"title": "After joint FM + classifier fine-tuning (ẑ)", "xy": xy2,
                    "labels": y}]
@@ -403,7 +403,7 @@ def joint_feature_charts():
             f"and after the optional joint extension (joint PCA, seed 0)",
             f"stage3_features_joint_{ds}_{enc}.png", axis_labels=pc_labels(pca)))
         print("figure:", feature_overlay(
-            [{"title": "Strategy 2 (frozen classifier): z (faded) → ẑ (solid)",
+            [{"title": "Guided strategy (frozen classifier): z (faded) → ẑ (solid)",
               "xy_before": xy0, "xy_after": xy1, "labels": y},
              {"title": "Joint FM + classifier fine-tuning: z (faded) → ẑ (solid)",
               "xy_before": xy0, "xy_after": xy2, "labels": y}],
