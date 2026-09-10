@@ -256,6 +256,10 @@ Per the user-supplied implementation prompt: the spec's optional "explore the le
 
 **What the overlays show (recorded in the notebook, qualitative only):** for the mandatory strategies most segments are shorter than the marker and the visible ones are short and not class-coherent — consistent with §5's reading that the useful movement lies mostly outside the plane. For the joint extension the visible movement is class-coherent for a few classes (FGVC-Aircraft: DHC-1 and Cessna 172 shift together; DTD: knitted and bubbly) while the rest barely move — a difference in kind from the frozen-classifier strategies, consistent with a trainable boundary under a pure CE objective. Notebook rebuilt (33 cells, 0 errors); `repro_check` green.
 
+## 2026-09-10 — README: "Start here" block linking the three executed notebooks
+
+**Request (user, after the professor's review):** a full block of the stages in the README with direct links to the notebook files, so a reader of the repository can jump straight to them. Added a table (stage → executed notebook → report → decision records → one-line summary) plus links to the lab notebook, metrics and figures, placed right after the introduction. Documentation only; no code, result or notebook changed.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*

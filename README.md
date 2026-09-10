@@ -6,6 +6,18 @@ Three-stage course project. The professor's PDFs are the single source of truth 
 2. **Stage 2** — Flow Matching as the decision layer: transport frozen features toward the class prototypes (standard vs rolled-out training, T ∈ {4, 12}), compared against the Stage-1 prototype baseline on identical subsets/seeds; + the CLIP‑text branch ‡ and a full raw-feature comparison grid.
 3. **Stage 3** — an FM transformation before the **frozen** Stage-1 linear probe (`z → FM → ẑ → frozen probe`), initialized to exact identity; end-to-end rolled-out CE training vs classifier-guided-target training, against the pinned probe; + an optional joint fine-tuning extension with a classifier-only attribution control.
 
+## Start here — one executed notebook per stage
+
+Each notebook is the deliverable of its stage and is self-contained: every output (tables, figures, animations, audits) is embedded, so it reads in full on GitHub or in Jupyter without running anything. The report is the formal write-up; the decision records hold the pre-registered design choices.
+
+| Stage | Notebook (executed) | Report | Design records | What it shows |
+|---|---|---|---|---|
+| **1 · Baselines on frozen encoders** | [notebooks/stage1_presentation.ipynb](notebooks/stage1_presentation.ipynb) | [docs/REPORT_STAGE1.md](docs/REPORT_STAGE1.md) | [ADR 0004](docs/adr/0004-professor-spec-is-source-of-truth.md) · [0005](docs/adr/0005-group-choices-within-the-spec.md) · [0006](docs/adr/0006-post-results-pair-and-branch-selection.md) | linear probe, image-derived prototypes and zero-shot CLIP on DTD, FGVC-Aircraft and Flowers-102 ‡ at K ∈ {5, 10, full}; selection of the dataset pair and heads carried into Stages 2–3 |
+| **2 · Flow Matching as the decision layer** | [notebooks/stage2_presentation.ipynb](notebooks/stage2_presentation.ipynb) | [docs/REPORT_STAGE2.md](docs/REPORT_STAGE2.md) | [ADR 0007](docs/adr/0007-stage2-design-decisions.md) | frozen features transported toward class prototypes (standard vs rolled-out FM, T ∈ {4, 12}) against the Stage-1 prototype baseline; flow animations; CLIP-text branch ‡; full raw-feature grid |
+| **3 · FM before the frozen linear classifier** | [notebooks/stage3_presentation.ipynb](notebooks/stage3_presentation.ipynb) | [docs/REPORT_STAGE3.md](docs/REPORT_STAGE3.md) | [ADR 0008](docs/adr/0008-stage3-design-decisions.md) | `z → FM → ẑ → frozen probe` from an exact identity; rolled-out CE training vs classifier-guided targets, paired against the pinned probe; optional joint fine-tuning with its classifier-only control |
+
+Supporting material: [docs/LAB_NOTEBOOK.md](docs/LAB_NOTEBOOK.md) (chronological log of every step, command, error and fix), [results/metrics/](results/metrics/) (generated tables and per-run CSVs), [results/figures/](results/figures/) (every figure), and `.	asks.ps1 check`, which re-derives every reported number from the raw artifacts.
+
 > The earlier pre-specification implementation (MNIST / CIFAR-10 / Mini-ImageNet, episodic few-shot protocol) is archived at tag `stage1-v1-episodic` and branch `archive/stage1-v1-episodic`. Its numbers are **not** current — see ADR 0004.
 
 ## Protocol at a glance
