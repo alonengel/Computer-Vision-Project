@@ -228,6 +228,10 @@ Per the user-supplied implementation prompt: the spec's optional "explore the le
 
 **Gotchas:** (1) the ★ glyph is missing from Arial (matplotlib warning, rendered as a box) — the suptitle says "star" instead; (2) the Bash tool collapses `\\` to `\` inside heredocs, which turned `"\n"` escapes in a heredoc-written Python patch into literal newlines (SyntaxError) — fixed with the editor's Edit tool; keep backslash-bearing edits out of heredocs.
 
+## 2026-09-10 — Stage-3 talk notebooks removed from `main` (archived on a tag + branch)
+
+**Decision (user):** the repository's Stage-3 deliverable is the single scientific notebook `stage3_presentation.ipynb`, as in the earlier stages. The presentation-focused companions built on 2026-09-09 — `stage3_presentation_talk.ipynb` (v1, collapsed Hebrew speaker notes inside), `stage3_presentation_talk_v2.ipynb` (English-only, 13 sections + appendix) with its private notes `stage3_speaker_notes_he_v2.md`, their section directories `nb3_talk_sections/` and `nb3_talk_v2_sections/`, and the `build_talk_notebook.py` builder — are removed from `main`'s tree in a normal commit (`git rm`; README lines reverted). Per the user's instruction the git history is **not** rewritten: the two talk commits (`b1c2e9a`, `71d0549`) stay in `main`'s history, and the complete state is additionally preserved as tag `backup/stage3-talk-notebooks-20260910` and branch `archive/stage3-talk-notebooks` (both pushed). Nothing scientific changed — same `results/`, `src/`, `scripts/` and tables; `repro_check` green. To retrieve the talk notebooks later: `git checkout archive/stage3-talk-notebooks -- notebooks/`.
+
 ---
 
 ## 2026-07-17 — Repo moved to D:, scaffold *(archived v1 — see note above)*
